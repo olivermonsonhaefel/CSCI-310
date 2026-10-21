@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">Trojan_Rideshare</string>
+    <string name="login_title">Trojan Rideshare</string>
+    <string name="login_subtitle">Sign in to your account</string>
+    <string name="prompt_email">Email</string>
+    <string name="prompt_password">Password</string>
+    <string name="action_sign_in">Sign In</string>
+    <string name="error_email_required">Email is required</string>
+    <string name="error_password_required">Password is required</string>
 </resources>
