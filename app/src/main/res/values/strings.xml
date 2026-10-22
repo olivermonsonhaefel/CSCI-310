@@ -1,3 +1,23 @@
 <resources>
     <string name="app_name">Trojan_Rideshare</string>
+    <string name="login_title">Trojan Rideshare</string>
+    <string name="login_subtitle">Sign in to your account</string>
+    <string name="prompt_email">Email</string>
+    <string name="prompt_password">Password</string>
+    <string name="action_sign_in">Sign In</string>
+    <string name="error_email_required">Email is required</string>
+    <string name="error_password_required">Password is required</string>
+    <string name="create_account_title">Create Account</string>
+    <string name="prompt_first_name">First Name</string>
+    <string name="prompt_last_name">Last Name</string>
+    <string name="prompt_email_username">Email (Username)</string>
+    <string name="action_register">Register</string>
+    <string name="prompt_have_account">Already have an account? Sign In</string>
+    <string name="prompt_no_account">Don\'t have an account? Register</string>
+    <string name="logo_desc">Trojan Rideshare Logo</string>
+    <string name="welcome_message">Welcome to Trojan Rideshare!</string>
+    <string name="account_success_title">Account Created Successfully</string>
+    <string name="account_success_desc">Your account is active and ready. Book rides or connect with fellow Trojans across campus securely.</string>
+    <string name="action_logout">Log Out</string>
+    <string name="register_subtitle">Join Trojan Rideshare today</string>
 </resources>
