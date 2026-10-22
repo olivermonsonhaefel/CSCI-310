@@ -2,6 +2,7 @@ package com.example.trojan_rideshare;
 
 import java.util.UUID;
 
+@SuppressWarnings({"unused", "RedundantSuppression"})
 public class User {
     private final String id;
     private final String email;
