@@ -29,6 +29,9 @@ public class MainActivity extends AppCompatActivity {
             return insets;
         });
 
+        MaterialButton btnCreateRide = findViewById(R.id.btnCreateRide);
+        btnCreateRide.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, CreateRideActivity.class)));
+
         MaterialButton btnLogout = findViewById(R.id.btnLogout);
         if (btnLogout != null) {
             btnLogout.setOnClickListener(v -> {
