@@ -160,6 +160,19 @@ public class RideSearchManager {
         return kept;
     }
 
+    public List<Ride> filterByParticipants(List<Ride> rides, String participantId) {
+        List<Ride> kept = new ArrayList<>();
+        if (rides == null || participantId == null) {
+            return kept;
+        }
+        for (Ride ride : rides) {
+            if (ride.getRiders().contains(participantId)) {
+                kept.add(ride);
+            }
+        }
+        return kept;
+    }
+
     /** Keeps rides whose departure falls on the given calendar day. */
     public List<Ride> filterByDate(List<Ride> rides, Date day) {
         List<Ride> kept = new ArrayList<>();

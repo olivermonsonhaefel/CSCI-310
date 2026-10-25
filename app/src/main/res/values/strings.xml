@@ -52,6 +52,56 @@
     <string name="action_back_to_search">Back to search</string>
     <string name="join_not_in_search">Sending a join request is a separate feature and is not part of search.</string>
     <string name="error_ride_unavailable">This ride is no longer available.</string>
+    <string name="action_my_rides">My Rides</string>
+    <string name="ride_history_title">My Rides</string>
+    <string name="ride_history_subtitle">Your upcoming and past rides</string>
+    <string name="label_upcoming">Upcoming</string>
+    <string name="label_history">History</string>
+    <string name="prompt_status">Status</string>
+    <string name="prompt_participant">Rode with</string>
+    <string name="action_search_history">Search History</string>
+    <string name="option_all">All</string>
+    <string name="no_upcoming_rides">No upcoming rides.</string>
+    <string name="no_past_rides">No past rides.</string>
+    <string name="no_matching_rides">No rides match your filters.</string>
+    <string name="error_load_rides">Could not load your rides. Try again.</string>
+    <string name="label_role">Your role: %1$s</string>
+    <string name="role_organizer">Organizer</string>
+    <string name="role_rider">Rider</string>
+    <string name="label_status_riders">%1$s · %2$s (%3$d/%4$d riders)</string>
+    <string name="label_history_status">%1$s · %2$d riders</string>
+    <string name="label_cost_not_split">Your cost: Cost not split yet</string>
+    <string name="action_edit_ride">Edit Ride</string>
+    <string name="action_change_status">Change Status</string>
+    <string name="action_cancel_ride">Cancel Ride</string>
+    <string name="action_leave_ride">Leave Ride</string>
+    <string name="action_back">Back</string>
+    <string name="action_yes">Yes</string>
+    <string name="action_no">No</string>
+    <string name="confirm_cancel_ride">Cancel this ride for everyone?</string>
+    <string name="confirm_leave_ride">Leave this ride?</string>
+    <string name="msg_status_updated">Status updated</string>
+    <string name="msg_ride_cancelled">Ride cancelled</string>
+    <string name="msg_left_ride">You left the ride</string>
+    <string name="msg_ride_updated">Ride updated</string>
+    <string name="error_update_ride">Could not update ride. Try again.</string>
+    <string name="edit_ride_title">Edit Ride</string>
+    <string name="edit_ride_subtitle">Update your ride details</string>
+    <string name="action_save_changes">Save Changes</string>
+    <string-array name="history_status_options">
+        <item>All</item>
+        <item>Completed</item>
+        <item>Cancelled</item>
+    </string-array>
+    <string-array name="history_sort_options">
+        <item>Newest first</item>
+        <item>Oldest first</item>
+    </string-array>
+    <string-array name="ride_status_choices">
+        <item>On-Time</item>
+        <item>Delayed</item>
+        <item>Completed</item>
+    </string-array>
     <string-array name="search_sort_options">
         <item>Earliest to latest</item>
         <item>Latest to earliest</item>
