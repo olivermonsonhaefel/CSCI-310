@@ -3,7 +3,6 @@ package com.example.trojan_rideshare;
 import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -15,16 +14,6 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.net.URLEncoder;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
@@ -32,12 +21,6 @@ import java.util.Locale;
 import java.util.function.Consumer;
 
 public class CreateRideActivity extends AppCompatActivity {
-
-    private static final String TAG = "CreateRideActivity";
-    private static final String LOCATION_UNAVAILABLE = "Location service provider not available. Try again later.";
-    // Mapbox results are biased toward USC
-    private static final double USC_LAT = 34.0224;
-    private static final double USC_LON = -118.2851;
 
     private TextInputLayout tilRideTitle, tilOrigin, tilDestination, tilRideDate, tilDepartureTime,
             tilMaxRiders, tilExpectedCost;
@@ -48,6 +31,7 @@ public class CreateRideActivity extends AppCompatActivity {
     private RideManager rideManager;
 
     private final Calendar departure = Calendar.getInstance();
+    private final MapboxGeocoder geocoder = new MapboxGeocoder();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -195,49 +179,8 @@ public class CreateRideActivity extends AppCompatActivity {
         }, this::showLocationUnavailable);
     }
 
-    /**
-     * Turns a POI keyword like "LAX" into a Location using the Mapbox Geocoding API.
-     * onFound receives null when no place matches; onError receives a message when Mapbox can't be reached.
-     */
     private void lookUpLocation(String keyword, Consumer<Location> onFound, Consumer<String> onError) {
-        new Thread(() -> {
-            try {
-                String query = URLEncoder.encode(keyword, "UTF-8").replace("+", "%20");
-                // Search Box API: unlike Mapbox's older geocoding endpoint, it finds POIs like "LAX"
-                URL url = new URL("https://api.mapbox.com/search/searchbox/v1/forward?q=" + query
-                        + "&limit=1&country=us&proximity=" + USC_LON + "," + USC_LAT
-                        + "&access_token=" + BuildConfig.MAPBOX_TOKEN);
-                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                connection.setConnectTimeout(10000);
-                connection.setReadTimeout(10000);
-                if (connection.getResponseCode() != HttpURLConnection.HTTP_OK) {
-                    Log.e(TAG, "Mapbox returned HTTP " + connection.getResponseCode());
-                    runOnUiThread(() -> onError.accept(LOCATION_UNAVAILABLE));
-                    return;
-                }
-
-                StringBuilder body = new StringBuilder();
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        body.append(line);
-                    }
-                }
-
-                JSONArray features = new JSONObject(body.toString()).getJSONArray("features");
-                if (features.length() == 0) {
-                    runOnUiThread(() -> onFound.accept(null));
-                    return;
-                }
-                // Mapbox gives coordinates as [lon, lat]
-                JSONArray coordinates = features.getJSONObject(0).getJSONObject("geometry").getJSONArray("coordinates");
-                Location location = new Location(keyword, coordinates.getDouble(1), coordinates.getDouble(0));
-                runOnUiThread(() -> onFound.accept(location));
-            } catch (IOException | JSONException e) {
-                Log.e(TAG, "Mapbox lookup failed", e);
-                runOnUiThread(() -> onError.accept(LOCATION_UNAVAILABLE));
-            }
-        }).start();
+        geocoder.lookUp(keyword, onFound, onError);
     }
 
     private void showLocationUnavailable(String message) {

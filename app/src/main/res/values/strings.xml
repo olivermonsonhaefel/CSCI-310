@@ -33,4 +33,34 @@
     <string name="prompt_note">Note (optional)</string>
     <string name="action_post_ride">Post Ride</string>
     <string name="action_cancel">Cancel</string>
+    <string name="action_search_rides">Search Rides</string>
+    <string name="search_ride_title">Search Rides</string>
+    <string name="search_ride_subtitle">Find a ride that matches your trip</string>
+    <string name="prompt_radius">Flexibility radius (miles)</string>
+    <string name="prompt_window_start">Window start</string>
+    <string name="prompt_window_end">Window end</string>
+    <string name="prompt_sort">Sort results</string>
+    <string name="default_radius">1</string>
+    <string name="label_organizer">Organizer: %1$s</string>
+    <string name="label_route">From %1$s to %2$s</string>
+    <string name="label_status_capacity">%1$s · %2$s (%3$d seats open)</string>
+    <string name="label_expected_cost">Expected cost: $%1$d total, $%2$s per person</string>
+    <string name="error_search_failed">Could not search rides. Try again.</string>
+    <string name="ride_detail_title">Ride Details</string>
+    <string name="ride_cancelled_notice">This ride was cancelled. Its current status and capacity are shown above.</string>
+    <string name="action_request_join">Request to Join</string>
+    <string name="action_back_to_search">Back to search</string>
+    <string name="join_not_in_search">Sending a join request is a separate feature and is not part of search.</string>
+    <string name="error_ride_unavailable">This ride is no longer available.</string>
+    <string-array name="search_sort_options">
+        <item>Earliest to latest</item>
+        <item>Latest to earliest</item>
+        <item>Proximity</item>
+        <item>Proximity and time</item>
+        <item>Expected cost</item>
+    </string-array>
+    <plurals name="search_result_count">
+        <item quantity="one">%d ride found</item>
+        <item quantity="other">%d rides found</item>
+    </plurals>
 </resources>

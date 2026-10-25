@@ -32,6 +32,9 @@ public class MainActivity extends AppCompatActivity {
         MaterialButton btnCreateRide = findViewById(R.id.btnCreateRide);
         btnCreateRide.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, CreateRideActivity.class)));
 
+        MaterialButton btnSearchRides = findViewById(R.id.btnSearchRides);
+        btnSearchRides.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, SearchRideActivity.class)));
+
         MaterialButton btnLogout = findViewById(R.id.btnLogout);
         if (btnLogout != null) {
             btnLogout.setOnClickListener(v -> {
