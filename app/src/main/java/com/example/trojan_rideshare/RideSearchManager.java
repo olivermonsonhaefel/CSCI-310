@@ -82,7 +82,7 @@ public class RideSearchManager {
                             if (ride.getDepartureTime() != null && ride.getDepartureTime().after(new Date())) {
                                 rides.add(ride);
                             }
-                        } catch (FirebaseFirestoreException e) {
+                        } catch (RuntimeException | FirebaseFirestoreException e) {
                             Log.e(TAG, "Skipping unreadable ride " + document.getId(), e);
                         }
                     }
@@ -100,7 +100,7 @@ public class RideSearchManager {
                 .addOnSuccessListener(snapshot -> {
                     try {
                         callback.accept(RideManager.toRide(snapshot));
-                    } catch (FirebaseFirestoreException e) {
+                    } catch (RuntimeException | FirebaseFirestoreException e) {
                         Log.e(TAG, "loadRide failed", e);
                         callback.accept(null);
                     }

@@ -260,28 +260,62 @@ public class RideManager {
         if (!snapshot.exists()) {
             throw abort("Ride not found");
         }
-        Map<String, Object> organizerMap = (Map<String, Object>) snapshot.get("organizer");
-        User organizer = new User(
-                (String) organizerMap.get("id"),
-                (String) organizerMap.get("email"),
-                "",
-                (String) organizerMap.get("fullName"),
-                (String) organizerMap.get("nickname"),
-                0,
-                0);
-        List<String> riders = (List<String>) snapshot.get("riders");
+        List<String> riders = new ArrayList<>();
+        Object ridersRaw = snapshot.get("riders");
+        if (ridersRaw instanceof List) {
+            for (Object rider : (List<?>) ridersRaw) {
+                if (rider != null) {
+                    riders.add(String.valueOf(rider));
+                }
+            }
+        }
+        String rideId = snapshot.getString("rideID");
+        if (rideId == null || rideId.isEmpty()) {
+            rideId = snapshot.getId();
+        }
+        String title = snapshot.getString("title");
+        String status = snapshot.getString("rideStatus");
+        if (status == null || status.isEmpty()) {
+            status = Status.ON_TIME.name();
+        }
+        try {
+            Status.valueOf(status);
+        } catch (IllegalArgumentException e) {
+            throw abort("Ride " + rideId + " has an unknown status");
+        }
         return new Ride(
-                snapshot.getString("rideID"),
-                organizer,
-                snapshot.getString("title"),
-                toLocation((Map<String, Object>) snapshot.get("origin")),
-                toLocation((Map<String, Object>) snapshot.get("destination")),
+                rideId,
+                toOrganizer(snapshot.get("organizer"), riders),
+                title != null ? title : "",
+                toLocation(snapshot.get("origin")),
+                toLocation(snapshot.get("destination")),
                 snapshot.getDate("departureTime"),
                 getInt(snapshot, "maxRiders"),
                 getInt(snapshot, "totalExpectedCost"),
                 snapshot.getString("note"),
-                riders != null ? riders : new ArrayList<>(),
-                snapshot.getString("rideStatus"));
+                riders,
+                status);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static User toOrganizer(Object raw, List<String> riders) {
+        if (raw instanceof Map) {
+            Map<String, Object> organizerMap = (Map<String, Object>) raw;
+            return new User(
+                    text(organizerMap.get("id")),
+                    text(organizerMap.get("email")),
+                    "",
+                    text(organizerMap.get("fullName")),
+                    text(organizerMap.get("nickname")),
+                    0,
+                    0);
+        }
+        String id = riders.isEmpty() ? "" : riders.get(0);
+        return new User(id, "", "", "Unknown", "", 0, 0);
+    }
+
+    private static String text(Object value) {
+        return value != null ? String.valueOf(value) : "";
     }
 
     private static Map<String, Object> toMap(Location location) {
@@ -292,9 +326,17 @@ public class RideManager {
         return locationMap;
     }
 
-    private static Location toLocation(Map<String, Object> locationMap) {
+    @SuppressWarnings("unchecked")
+    private static Location toLocation(Object raw) throws FirebaseFirestoreException {
+        if (!(raw instanceof Map)) {
+            throw abort("Ride is missing a location");
+        }
+        Map<String, Object> locationMap = (Map<String, Object>) raw;
+        if (!(locationMap.get("lat") instanceof Number) || !(locationMap.get("lon") instanceof Number)) {
+            throw abort("Ride location is missing coordinates");
+        }
         return new Location(
-                (String) locationMap.get("POIName"),
+                text(locationMap.get("POIName")),
                 ((Number) locationMap.get("lat")).doubleValue(),
                 ((Number) locationMap.get("lon")).doubleValue());
     }
