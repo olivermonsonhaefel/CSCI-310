@@ -34,6 +34,9 @@ public class MainActivity extends AppCompatActivity {
 
         new RideSearchController(this).start();
 
+        MaterialButton btnMyRides = findViewById(R.id.btnMyRides);
+        btnMyRides.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, RideHistoryActivity.class)));
+
         MaterialButton btnLogout = findViewById(R.id.btnLogout);
         if (btnLogout != null) {
             btnLogout.setOnClickListener(v -> {
