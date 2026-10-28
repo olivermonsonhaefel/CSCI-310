@@ -34,13 +34,14 @@ import java.math.RoundingMode;
 import java.text.DateFormat;
 import java.text.NumberFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.function.Consumer;
 
-/** Balance UI over CostSplitManager; existing screens and navigation stay unchanged. */
+/** Expense and organizer cost-sharing actions over the existing managers. */
 public class BalanceActivity extends AppCompatActivity {
     private CostSplitManager manager;
     private User user;
@@ -73,7 +74,13 @@ public class BalanceActivity extends AppCompatActivity {
             if (!busy && user != null) editExpense(null);
         });
         findViewById(R.id.balanceSplit).setOnClickListener(v -> {
-            if (!busy && user != null) chooseRide();
+            if (!busy && active()) chooseRide(R.string.balance_split);
+        });
+        findViewById(R.id.balanceComplete).setOnClickListener(v -> {
+            if (!busy && active()) chooseRide(R.string.balance_complete);
+        });
+        findViewById(R.id.balanceFlag).setOnClickListener(v -> {
+            if (!busy && active()) chooseRide(R.string.balance_flag);
         });
         findViewById(R.id.balanceSimplify).setOnClickListener(v -> {
             if (!busy && user != null) showSimplifiedTransfers();
@@ -100,6 +107,10 @@ public class BalanceActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        User current = AuthManager.getInstance().getCurrentUser();
+        if (user == null || current == null || !user.getId().equals(current.getId())) {
+            busy = false;
+        }
         if (!busy) refresh();
     }
 
@@ -113,6 +124,7 @@ public class BalanceActivity extends AppCompatActivity {
         busy = loading;
         findViewById(R.id.balanceProgress).setVisibility(loading ? View.VISIBLE : View.GONE);
         for (int id : new int[]{R.id.balanceRefresh, R.id.balanceAdd, R.id.balanceSplit,
+                R.id.balanceComplete, R.id.balanceFlag,
                 R.id.balanceSimplify, R.id.balancePersonFilter, R.id.balanceSettledOnly}) {
             findViewById(id).setEnabled(!loading && user != null);
         }
@@ -121,6 +133,7 @@ public class BalanceActivity extends AppCompatActivity {
     private void refresh() {
         user = AuthManager.getInstance().getCurrentUser();
         int version = ++loadVersion;
+        message.setVisibility(View.VISIBLE);
         findViewById(R.id.balanceSummary).setVisibility(View.GONE);
         findViewById(R.id.balanceContent).setVisibility(View.GONE);
         MaterialButton back = findViewById(R.id.balanceBack);
@@ -149,7 +162,8 @@ public class BalanceActivity extends AppCompatActivity {
             renderExpenses();
             findViewById(R.id.balanceSummary).setVisibility(View.VISIBLE);
             findViewById(R.id.balanceContent).setVisibility(View.VISIBLE);
-            message.setText(loaded.isEmpty() ? getString(R.string.balance_empty) : "");
+            message.setText("");
+            message.setVisibility(View.GONE);
         });
     }
 
@@ -290,6 +304,8 @@ public class BalanceActivity extends AppCompatActivity {
                         if (!active()) return;
                         setBusy(false);
                         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);
+                        // Cancelling a profile lookup must not create an expense afterward.
+                        if (!dialog.isShowing()) return;
                         if (result.isEmpty()) {
                             otherEmail.setError(getString(R.string.balance_user_error));
                             return;
@@ -338,11 +354,19 @@ public class BalanceActivity extends AppCompatActivity {
 
     private void change(Consumer<Consumer<Boolean>> operation, AlertDialog dialog, int error, int successMessage) {
         setBusy(true);
-        if (dialog != null) dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
+        if (dialog != null) {
+            dialog.setCancelable(false);
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setEnabled(false);
+        }
         operation.accept(success -> {
             if (!active()) return;
             setBusy(false);
-            if (dialog != null) dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);
+            if (dialog != null) {
+                dialog.setCancelable(true);
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);
+                dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setEnabled(true);
+            }
             if (success) {
                 if (dialog != null) dialog.dismiss();
                 if (successMessage != 0) Toast.makeText(this, successMessage, Toast.LENGTH_LONG).show();
@@ -373,7 +397,7 @@ public class BalanceActivity extends AppCompatActivity {
         });
     }
 
-    private void chooseRide() {
+    private void chooseRide(int action) {
         setBusy(true);
         FirebaseFirestore.getInstance().collection("rides").whereEqualTo("organizer.id", user.getId()).get()
                 .addOnSuccessListener(result -> {
@@ -383,7 +407,15 @@ public class BalanceActivity extends AppCompatActivity {
                     List<String> titles = new ArrayList<>();
                     try {
                         for (DocumentSnapshot snapshot : result.getDocuments()) {
-                            if (!Status.COMPLETED.name().equals(snapshot.getString("rideStatus"))) continue;
+                            String status = snapshot.getString("rideStatus");
+                            boolean complete = Status.COMPLETED.name().equals(status);
+                            if (action == R.string.balance_complete) {
+                                if (complete || Status.CANCELLED.name().equals(status)) continue;
+                                Date departure = snapshot.getDate("departureTime");
+                                if (departure == null || departure.after(new Date())) continue;
+                            } else if (!complete) {
+                                continue;
+                            }
                             Ride ride = RideManager.toRide(snapshot);
                             rides.add(ride);
                             titles.add(ride.getTitle() + " • " + DateFormat.getDateInstance().format(ride.getDepartureTime()));
@@ -393,17 +425,97 @@ public class BalanceActivity extends AppCompatActivity {
                         return;
                     }
                     if (rides.isEmpty()) {
-                        Toast.makeText(this, R.string.balance_no_rides, Toast.LENGTH_LONG).show();
+                        Toast.makeText(this, action == R.string.balance_complete
+                                ? R.string.balance_no_completable_rides : R.string.balance_no_rides,
+                                Toast.LENGTH_LONG).show();
                         return;
                     }
-                    new MaterialAlertDialogBuilder(this).setTitle(R.string.balance_split)
-                            .setItems(titles.toArray(new String[0]), (dialog, index) -> loadRidePeople(rides.get(index)))
+                    new MaterialAlertDialogBuilder(this).setTitle(action)
+                            .setItems(titles.toArray(new String[0]), (dialog, index) -> {
+                                if (!active() || busy) return;
+                                Ride ride = rides.get(index);
+                                if (action == R.string.balance_complete) {
+                                    completeRide(ride);
+                                } else if (action == R.string.balance_flag) {
+                                    chooseUnpaidRider(ride);
+                                } else if (ride.getNumOfRiders() < 2) {
+                                    Toast.makeText(this, R.string.balance_no_shared_riders, Toast.LENGTH_LONG).show();
+                                } else {
+                                    prepareSplit(ride);
+                                }
+                            })
                             .setNegativeButton(R.string.action_cancel, null).show();
                 }).addOnFailureListener(error -> {
                     if (!active()) return;
                     setBusy(false);
                     Toast.makeText(this, R.string.balance_rides_error, Toast.LENGTH_LONG).show();
                 });
+    }
+
+    private void completeRide(Ride ride) {
+        new MaterialAlertDialogBuilder(this).setTitle(R.string.balance_complete)
+                .setMessage(getString(R.string.balance_complete_confirm, ride.getTitle()))
+                .setNegativeButton(R.string.action_cancel, null)
+                .setPositiveButton(R.string.balance_complete, (dialog, which) -> {
+                    if (!busy && active()) {
+                        change(callback -> new RideManager().updateRideStatus(Status.COMPLETED, ride, callback),
+                                null, R.string.balance_complete_error, R.string.balance_complete_saved);
+                    }
+                }).show();
+    }
+
+    private void chooseUnpaidRider(Ride ride) {
+        setBusy(true);
+        manager.getRideExpenses(ride, rideExpenses -> {
+            if (!active()) return;
+            setBusy(false);
+            if (rideExpenses == null) {
+                Toast.makeText(this, R.string.balance_ride_expenses_error, Toast.LENGTH_LONG).show();
+                return;
+            }
+            List<Expense> unpaid = new ArrayList<>();
+            List<String> labels = new ArrayList<>();
+            for (Expense expense : rideExpenses) {
+                if (!expense.isPaid() && expense.getAmount() > 0) {
+                    unpaid.add(expense);
+                    labels.add(pair(expense.getPayer(), expense.getPayee(), BigDecimal.valueOf(expense.getAmount())));
+                }
+            }
+            if (unpaid.isEmpty()) {
+                Toast.makeText(this, R.string.balance_no_unpaid_riders, Toast.LENGTH_LONG).show();
+                return;
+            }
+            new MaterialAlertDialogBuilder(this).setTitle(R.string.balance_flag)
+                    .setItems(labels.toArray(new String[0]), (picker, index) -> {
+                        if (!active() || busy) return;
+                        Expense expense = unpaid.get(index);
+                        new MaterialAlertDialogBuilder(this).setTitle(R.string.balance_flag)
+                                .setMessage(getString(R.string.balance_flag_confirm, name(expense.getPayer()),
+                                        money(BigDecimal.valueOf(expense.getAmount())), ride.getTitle()))
+                                .setNegativeButton(R.string.action_cancel, null)
+                                .setPositiveButton(R.string.balance_flag, (confirmation, which) -> {
+                                    if (!busy && active()) {
+                                        change(callback -> manager.flagRider(ride, user, expense.getPayer(), callback),
+                                                null, R.string.balance_flag_error, R.string.balance_flag_saved);
+                                    }
+                                }).show();
+                    }).setNegativeButton(R.string.action_cancel, null).show();
+        });
+    }
+
+    private void prepareSplit(Ride ride) {
+        setBusy(true);
+        manager.getRideExpenses(ride, existing -> {
+            if (!active()) return;
+            setBusy(false);
+            if (existing == null) {
+                Toast.makeText(this, R.string.balance_ride_expenses_error, Toast.LENGTH_LONG).show();
+            } else if (!existing.isEmpty()) {
+                Toast.makeText(this, R.string.balance_already_split, Toast.LENGTH_LONG).show();
+            } else {
+                loadRidePeople(ride);
+            }
+        });
     }
 
     private void loadRidePeople(Ride ride) {
@@ -481,7 +593,7 @@ public class BalanceActivity extends AppCompatActivity {
                 sum = sum.add(BigDecimal.valueOf(amount));
             }
             if (sum.compareTo(BigDecimal.valueOf(cost)) != 0) {
-                total.setError(getString(R.string.balance_split_error));
+                total.setError(getString(R.string.balance_custom_total_error));
                 return;
             }
             change(callback -> manager.divideCost(ride, cost, CostSplitMode.CUSTOM, shares, callback), dialog,
@@ -586,6 +698,7 @@ public class BalanceActivity extends AppCompatActivity {
     }
 
     private void setOptions(Spinner spinner, List<String> values) {
+        spinner.setMinimumHeight(dp(48));
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, values);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinner.setAdapter(adapter);

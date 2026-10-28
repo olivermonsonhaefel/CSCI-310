@@ -250,6 +250,42 @@ public class CostSplitManager {
                 });
     }
 
+    /**
+     * Read the selected ride's reimbursements for organizer actions such as flagRider.
+     * Uses the same stable ids as divideCost/markPaid, without a new Expense field.
+     * Missing expenses are omitted; an empty list means there are no reimbursements.
+     */
+    public void getRideExpenses(Ride ride, Consumer<List<Expense>> callback) {
+        User actor = authManager.getCurrentUser();
+        if (actor == null || ride == null) {
+            Log.e("CostSplitManager", "A logged-in organizer and ride are required");
+            callback.accept(null);
+            return;
+        }
+        db.runTransaction(transaction -> {
+            Ride current = RideManager.toRide(transaction.get(db.collection("rides").document(ride.getRideID())));
+            requireOrganizer(current, actor);
+            requireCompleted(current);
+            List<Expense> results = new ArrayList<>();
+            for (String uid : current.getRiders()) {
+                if (uid.equals(current.getOrganizer().getId())) continue;
+                DocumentSnapshot snapshot = transaction.get(rideExpense(current, uid));
+                if (!snapshot.exists()) continue;
+                Expense expense = toExpense(snapshot);
+                if (!uid.equals(expense.getPayer().getId())
+                        || !actor.getId().equals(expense.getPayee().getId())) {
+                    throw abort("Expense participants do not match the ride");
+                }
+                results.add(expense);
+            }
+            return results;
+        }).addOnSuccessListener(callback::accept)
+                .addOnFailureListener(error -> {
+                    Log.e("CostSplitManager", "getRideExpenses failed", error);
+                    callback.accept(null);
+                });
+    }
+
     /** UCS-2.4.6. */
     public void getSettledExpenses(User user, Consumer<List<Expense>> callback) {
         getExpenseHistory(user, null, callback);
