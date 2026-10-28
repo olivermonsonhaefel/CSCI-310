@@ -491,9 +491,11 @@ public class CostSplitManager {
     // A stable UUID uses the existing ride identity without adding a rideID to Expense.
     // This lets UML markPaid/flagRider find the ride's reimbursement in "expenses".
     private DocumentReference rideExpense(Ride ride, String riderId) {
-        String id = UUID.nameUUIDFromBytes((ride.getRideID() + ":" + riderId)
-                .getBytes(StandardCharsets.UTF_8)).toString();
-        return db.collection("expenses").document(id);
+        return db.collection("expenses").document(rideExpenseId(ride.getRideID(), riderId));
+    }
+
+    static String rideExpenseId(String rideID, String riderId) {
+        return UUID.nameUUIDFromBytes((rideID + ":" + riderId).getBytes(StandardCharsets.UTF_8)).toString();
     }
 
     private boolean isCurrentUser(User user) {
