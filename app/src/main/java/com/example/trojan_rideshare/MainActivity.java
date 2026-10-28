@@ -40,6 +40,9 @@ public class MainActivity extends AppCompatActivity {
         MaterialButton btnJoinRequests = findViewById(R.id.btnJoinRequests);
         btnJoinRequests.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, JoinRequestsActivity.class)));
 
+        MaterialButton btnViewBalance = findViewById(R.id.btnViewBalance);
+        btnViewBalance.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, BalanceActivity.class)));
+
         MaterialButton btnLogout = findViewById(R.id.btnLogout);
         if (btnLogout != null) {
             btnLogout.setOnClickListener(v -> {
