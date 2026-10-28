@@ -32,6 +32,17 @@
             android:name=".CreateRideActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".BalanceActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="trojanrideshare" android:host="balance" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>

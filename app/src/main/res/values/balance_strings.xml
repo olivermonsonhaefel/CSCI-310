@@ -1,4 +1,19 @@
 <resources>
+    <string name="balance_open">View Balance</string>
+    <string name="balance_complete">Mark a ride completed</string>
+    <string name="balance_complete_confirm">Confirm that “%1$s” has taken place. You can split its final cost after marking it completed.</string>
+    <string name="balance_complete_saved">Ride marked completed. You can now split its cost.</string>
+    <string name="balance_complete_error">Could not complete this ride. Please refresh and try again.</string>
+    <string name="balance_no_completable_rides">No rides are ready to complete. Only rides you organize whose departure time has passed are listed; completed and cancelled rides are excluded.</string>
+    <string name="balance_flag">Flag an unpaid rider</string>
+    <string name="balance_flag_confirm">Flag %1$s for the unpaid %2$s expense on “%3$s”?</string>
+    <string name="balance_flag_saved">Rider flagged. Their expense remains unpaid.</string>
+    <string name="balance_flag_error">Could not flag this rider. The expense may already be settled, or the ride may have changed. Please refresh.</string>
+    <string name="balance_no_unpaid_riders">This ride has no outstanding rider expenses. Split the ride cost first if you have not already done so.</string>
+    <string name="balance_ride_expenses_error">Could not load this ride’s expenses. Please try again.</string>
+    <string name="balance_custom_total_error">Custom shares, including your own, must add up to the actual total cost.</string>
+    <string name="balance_no_shared_riders">There are no other riders on this ride, so there are no shared expenses to create.</string>
+    <string name="balance_already_split">This ride has already been split. Edit its existing expenses in the expense list instead.</string>
     <string name="balance_title">Your Balance</string>
     <string name="balance_subtitle">Keep track of shared ride expenses</string>
     <string name="balance_owed">You owe</string>
@@ -45,7 +60,7 @@
     <string name="balance_simplified_title">Suggested transfers</string>
     <string name="balance_simplified_note">These suggestions leave the original expenses and individual balances unchanged.</string>
     <string name="balance_no_rides">You have no completed rides to split as organizer.</string>
-    <string name="balance_rides_error">Could not load completed rides. Please try again.</string>
+    <string name="balance_rides_error">Could not load your rides. Please try again.</string>
     <string name="balance_split_mode_equal">Equal</string>
     <string name="balance_split_mode_custom">Custom</string>
     <string name="balance_actual_total">Actual total cost (USD)</string>

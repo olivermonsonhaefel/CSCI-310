@@ -122,6 +122,19 @@
             android:text="@string/balance_split"
             android:textColor="@color/usc_gold" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/balanceComplete"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/balance_complete" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/balanceFlag"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/balance_flag" />
+
         <LinearLayout
             android:id="@+id/balanceContent"
             android:layout_width="match_parent"
