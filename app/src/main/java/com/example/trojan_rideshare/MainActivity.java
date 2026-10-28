@@ -37,6 +37,9 @@ public class MainActivity extends AppCompatActivity {
         MaterialButton btnMyRides = findViewById(R.id.btnMyRides);
         btnMyRides.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, RideHistoryActivity.class)));
 
+        MaterialButton btnJoinRequests = findViewById(R.id.btnJoinRequests);
+        btnJoinRequests.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, JoinRequestsActivity.class)));
+
         MaterialButton btnViewBalance = findViewById(R.id.btnViewBalance);
         btnViewBalance.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, BalanceActivity.class)));
 

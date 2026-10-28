@@ -45,6 +45,9 @@
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
         <activity
+            android:name=".JoinRequestsActivity"
+            android:exported="false" />
+        <activity
             android:name=".BalanceActivity"
             android:exported="true"
             android:windowSoftInputMode="adjustResize">

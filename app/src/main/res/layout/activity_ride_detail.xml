@@ -61,6 +61,29 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/cardDetails" />
 
+        <!-- UCS-2.3.4: optional note to the organizer, at most 250 characters -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilJoinNote"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:hint="@string/prompt_join_note"
+            app:counterEnabled="true"
+            app:counterMaxLength="250"
+            app:errorEnabled="true"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tvUnavailable">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etJoinNote"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textMultiLine|textCapSentences"
+                android:minLines="2" />
+        </com.google.android.material.textfield.TextInputLayout>
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnRequestJoin"
             android:layout_width="0dp"
@@ -72,7 +95,7 @@
             android:textColor="@color/usc_gold"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tvUnavailable" />
+            app:layout_constraintTop_toBottomOf="@id/tilJoinNote" />
 
         <TextView
             android:id="@+id/tvBack"
