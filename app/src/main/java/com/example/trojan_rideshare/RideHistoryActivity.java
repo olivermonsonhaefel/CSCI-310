@@ -20,8 +20,10 @@ import com.google.android.material.textfield.TextInputLayout;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.function.Consumer;
 
 public class RideHistoryActivity extends AppCompatActivity {
@@ -42,9 +44,11 @@ public class RideHistoryActivity extends AppCompatActivity {
     private UserRideHistoryManager historyManager;
     private RideSearchManager searchManager;
     private RideManager rideManager;
+    private CostSplitManager costSplitManager;
     private AuthManager authManager;
 
     private List<Ride> pastRides = new ArrayList<>();
+    private final Map<String, Expense> expensesById = new HashMap<>();
     private final List<User> participants = new ArrayList<>();
 
     @Override
@@ -62,6 +66,7 @@ public class RideHistoryActivity extends AppCompatActivity {
         historyManager = new UserRideHistoryManager();
         searchManager = new RideSearchManager();
         rideManager = new RideManager();
+        costSplitManager = new CostSplitManager();
 
         tilOrigin = findViewById(R.id.tilOrigin);
         tilDestination = findViewById(R.id.tilDestination);
@@ -101,20 +106,29 @@ public class RideHistoryActivity extends AppCompatActivity {
     private void loadRides() {
         progressBar.setVisibility(View.VISIBLE);
         historyManager.getHistory(rides -> {
-            progressBar.setVisibility(View.GONE);
             if (rides == null) {
+                progressBar.setVisibility(View.GONE);
                 Toast.makeText(this, R.string.error_load_rides, Toast.LENGTH_LONG).show();
                 return;
             }
-            List<Ride> upcoming = new ArrayList<>(searchManager.filterByStatus(rides, Status.ON_TIME));
-            upcoming.addAll(searchManager.filterByStatus(rides, Status.DELAYED));
-            showRides(searchManager.sortByEarliest(upcoming), upcomingContainer, tvUpcomingMessage,
-                    getString(R.string.no_upcoming_rides), true);
+            costSplitManager.getExpenses(authManager.getCurrentUser(), expenses -> {
+                progressBar.setVisibility(View.GONE);
+                expensesById.clear();
+                if (expenses != null) {
+                    for (Expense expense : expenses) {
+                        expensesById.put(expense.getId(), expense);
+                    }
+                }
+                List<Ride> upcoming = new ArrayList<>(searchManager.filterByStatus(rides, Status.ON_TIME));
+                upcoming.addAll(searchManager.filterByStatus(rides, Status.DELAYED));
+                showRides(searchManager.sortByEarliest(upcoming), upcomingContainer, tvUpcomingMessage,
+                        getString(R.string.no_upcoming_rides), true);
 
-            pastRides = new ArrayList<>(searchManager.filterByStatus(rides, Status.COMPLETED));
-            pastRides.addAll(searchManager.filterByStatus(rides, Status.CANCELLED));
-            showRides(searchManager.sortByLatest(pastRides), historyContainer, tvHistoryMessage,
-                    getString(R.string.no_past_rides), false);
+                pastRides = new ArrayList<>(searchManager.filterByStatus(rides, Status.COMPLETED));
+                pastRides.addAll(searchManager.filterByStatus(rides, Status.CANCELLED));
+                showRides(searchManager.sortByLatest(pastRides), historyContainer, tvHistoryMessage,
+                        getString(R.string.no_past_rides), false);
+            });
         });
         historyManager.getParticipants(users -> {
             participants.clear();
@@ -223,11 +237,48 @@ public class RideHistoryActivity extends AppCompatActivity {
                 tvCost.setText(getString(R.string.label_expected_cost, ride.getTotalExpectedCost(), perPerson));
             } else {
                 tvStatus.setText(getString(R.string.label_history_status, status, ride.getNumOfRiders()));
-                tvCost.setText(R.string.label_cost_not_split);
+                if (Status.COMPLETED.name().equals(ride.getRideStatus())) {
+                    tvCost.setText(costText(ride, uid, isOrganizer));
+                } else {
+                    tvCost.setVisibility(View.GONE);
+                }
             }
             row.setOnClickListener(v -> showActions(ride, isOrganizer));
             container.addView(row);
         }
+    }
+
+    private String costText(Ride ride, String uid, boolean isOrganizer) {
+        if (!isOrganizer) {
+            Expense expense = expensesById.get(CostSplitManager.rideExpenseId(ride.getRideID(), uid));
+            if (expense == null) {
+                return getString(R.string.label_cost_not_split);
+            }
+            return getString(R.string.label_your_cost, money(expense.getAmount()),
+                    getString(expense.isPaid() ? R.string.status_paid : R.string.status_not_paid));
+        }
+        double owed = 0;
+        int paid = 0;
+        int split = 0;
+        for (String riderId : ride.getRiders()) {
+            Expense expense = expensesById.get(CostSplitManager.rideExpenseId(ride.getRideID(), riderId));
+            if (expense == null) {
+                continue;
+            }
+            split++;
+            owed += expense.getAmount();
+            if (expense.isPaid()) {
+                paid++;
+            }
+        }
+        if (split == 0) {
+            return getString(R.string.label_cost_not_split);
+        }
+        return getString(R.string.label_owed_to_you, money(owed), paid, split);
+    }
+
+    private static String money(double amount) {
+        return String.format(Locale.US, "%.2f", amount);
     }
 
     private void showActions(Ride ride, boolean isOrganizer) {

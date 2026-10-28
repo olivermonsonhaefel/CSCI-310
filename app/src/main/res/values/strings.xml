@@ -71,6 +71,10 @@
     <string name="label_status_riders">%1$s · %2$s (%3$d/%4$d riders)</string>
     <string name="label_history_status">%1$s · %2$d riders</string>
     <string name="label_cost_not_split">Your cost: Cost not split yet</string>
+    <string name="label_your_cost">Your cost: $%1$s · %2$s</string>
+    <string name="label_owed_to_you">Riders owe you $%1$s · %2$d of %3$d paid</string>
+    <string name="status_paid">Paid</string>
+    <string name="status_not_paid">Not paid</string>
     <string name="action_edit_ride">Edit Ride</string>
     <string name="action_change_status">Change Status</string>
     <string name="action_cancel_ride">Cancel Ride</string>
