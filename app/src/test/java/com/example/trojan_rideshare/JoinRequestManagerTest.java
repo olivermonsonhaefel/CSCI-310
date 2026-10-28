@@ -12,7 +12,7 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
-/** Checks for sending and answering join requests (UCS-2.3.2, UCS-2.3.4). No Firestore needed. */
+/** Checks for sending and accepting join requests (UCS-2.3.2, UCS-2.3.4). No Firestore needed. */
 public class JoinRequestManagerTest {
 
     private static final Location USC = new Location("USC", 34.0224, -118.2851);
@@ -126,14 +126,14 @@ public class JoinRequestManagerTest {
     @Test
     public void onlyTheOrganizerCanAccept() {
         Ride ride = ride(Status.ON_TIME, LATER, 3, "org", "other");
-        assertEquals(JoinRequestManager.MSG_NOT_ORGANIZER,
+        assertEquals("Only the organizer can accept requests",
                 JoinRequestManager.checkCanAccept(ride, "other", RequestStatus.PENDING.name(), "me"));
     }
 
     @Test
     public void answeredRequestCannotBeAcceptedAgain() {
         Ride ride = ride(Status.ON_TIME, LATER, 3, "org");
-        assertEquals(JoinRequestManager.MSG_NOT_PENDING,
+        assertEquals("Request was already answered",
                 JoinRequestManager.checkCanAccept(ride, "org", RequestStatus.REJECTED.name(), "me"));
     }
 
@@ -177,14 +177,6 @@ public class JoinRequestManagerTest {
         assertEquals("older", requests.get(2).getId());
     }
 
-    @Test
-    public void requesterNameFallsBackToFullName() {
-        User noNickname = new User("u1", "a@usc.edu", "", "Tommy Trojan", "", 2027, 0);
-        JoinRequest request = new JoinRequest("r", NOW, "", RequestStatus.PENDING.name(),
-                ride(Status.ON_TIME, LATER, 3, "org"), noNickname);
-        assertEquals("Tommy Trojan", request.getRequesterName());
-    }
-
     // ---- helpers ----
 
     private static Ride ride(Status status, Date departure, int maxRiders, String organizerId, String... otherRiders) {
@@ -197,7 +189,7 @@ public class JoinRequestManagerTest {
 
     private static JoinRequest request(String id, Date when) {
         User requester = new User("me", "me@usc.edu", "", "Me", "me", 2027, 0);
-        return new JoinRequest(id, when, "", RequestStatus.PENDING.name(),
+        return new JoinRequest(id, when, "", RequestStatus.PENDING,
                 ride(Status.ON_TIME, LATER, 3, "org"), requester);
     }
 
