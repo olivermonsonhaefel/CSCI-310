@@ -20,10 +20,11 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * The organizer's "Pending Join Requests" list (UCS-2.3.9). Shows Pending requests on every active ride
- * the user organizes, newest first, and lets the organizer accept or reject each one.
- * The rides come from UserRideHistoryManager.getHistory and each ride's requests from
- * JoinRequestManager.getRideRequests, so no extra manager method is needed.
+ * The central place for join requests (spec Feature 3):
+ * - "Pending Join Requests" (UCS-2.3.9): Pending requests on every active ride the user organizes,
+ *   which the organizer can accept or reject. The rides come from UserRideHistoryManager.getHistory and
+ *   each ride's requests from JoinRequestManager.getRideRequests.
+ * - "Join Ride Requests" (UCS-2.3.8): every request the user sent, with a Cancel button while Pending.
  */
 public class JoinRequestsActivity extends AppCompatActivity {
 
@@ -32,10 +33,14 @@ public class JoinRequestsActivity extends AppCompatActivity {
     private ProgressBar progressBar;
     private TextView tvPendingMessage;
     private LinearLayout pendingContainer;
+    private TextView tvMyRequestsMessage;
+    private LinearLayout myRequestsContainer;
 
     private AuthManager authManager;
     private UserRideHistoryManager historyManager;
     private JoinRequestManager joinRequestManager;
+
+    private int loadsInProgress;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,6 +60,8 @@ public class JoinRequestsActivity extends AppCompatActivity {
         progressBar = findViewById(R.id.progressBar);
         tvPendingMessage = findViewById(R.id.tvPendingMessage);
         pendingContainer = findViewById(R.id.pendingContainer);
+        tvMyRequestsMessage = findViewById(R.id.tvMyRequestsMessage);
+        myRequestsContainer = findViewById(R.id.myRequestsContainer);
         TextView tvBack = findViewById(R.id.tvBack);
         tvBack.setOnClickListener(v -> finish());
     }
@@ -63,16 +70,23 @@ public class JoinRequestsActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         if (historyManager != null) {
-            loadPendingRequests();
+            loadAll();
         }
     }
 
+    private void loadAll() {
+        loadPendingRequests();
+        loadMyRequests();
+    }
+
+    // ---- Pending Join Requests (organizer) ----
+
     private void loadPendingRequests() {
         User user = authManager.getCurrentUser();
-        progressBar.setVisibility(View.VISIBLE);
+        startLoading();
         historyManager.getHistory(rides -> {
             if (rides == null) {
-                showLoadError();
+                finishLoading(true);
                 return;
             }
             // Only rides this user organizes that can still take riders
@@ -85,7 +99,8 @@ public class JoinRequestsActivity extends AppCompatActivity {
                 }
             }
             if (organized.isEmpty()) {
-                showRequests(new ArrayList<>());
+                showPendingRequests(new ArrayList<>());
+                finishLoading(false);
                 return;
             }
 
@@ -106,28 +121,20 @@ public class JoinRequestsActivity extends AppCompatActivity {
                     }
                     remaining[0]--;
                     if (remaining[0] == 0) {
-                        if (failed[0]) {
-                            showLoadError();
-                        } else {
+                        if (!failed[0]) {
                             JoinRequestManager.sortNewestFirst(pending);
-                            showRequests(pending);
+                            showPendingRequests(pending);
                         }
+                        finishLoading(failed[0]);
                     }
                 });
             }
         });
     }
 
-    private void showLoadError() {
-        progressBar.setVisibility(View.GONE);
-        Toast.makeText(this, R.string.error_load_join_requests, Toast.LENGTH_LONG).show();
-    }
-
-    private void showRequests(List<JoinRequest> requests) {
-        progressBar.setVisibility(View.GONE);
+    private void showPendingRequests(List<JoinRequest> requests) {
         pendingContainer.removeAllViews();
-        tvPendingMessage.setText(requests.isEmpty() ? getString(R.string.no_pending_join_requests) : "");
-        tvPendingMessage.setVisibility(requests.isEmpty() ? View.VISIBLE : View.GONE);
+        showEmptyMessage(tvPendingMessage, requests.isEmpty(), R.string.no_pending_join_requests);
 
         SimpleDateFormat format = new SimpleDateFormat(DATE_FORMAT, Locale.US);
         LayoutInflater inflater = LayoutInflater.from(this);
@@ -135,25 +142,14 @@ public class JoinRequestsActivity extends AppCompatActivity {
             Ride ride = request.getRide();
             View row = inflater.inflate(R.layout.item_join_request, pendingContainer, false);
 
-            ((TextView) row.findViewById(R.id.tvRequester)).setText(requesterName(request.getRequester()));
+            ((TextView) row.findViewById(R.id.tvRequester)).setText(displayName(request.getRequester()));
             ((TextView) row.findViewById(R.id.tvRideTitle)).setText(ride.getTitle());
             ((TextView) row.findViewById(R.id.tvRoute)).setText(getString(R.string.label_route,
                     ride.getOrigin().getPOIName(), ride.getDestination().getPOIName()));
             ((TextView) row.findViewById(R.id.tvDeparture)).setText(format.format(ride.getDepartureTime()));
             ((TextView) row.findViewById(R.id.tvSeats)).setText(getString(R.string.label_riders_count,
                     ride.getNumOfRiders(), ride.getMaxRiders()));
-            TextView tvRequested = row.findViewById(R.id.tvRequested);
-            if (request.getDateRequested() != null) {
-                tvRequested.setText(getString(R.string.label_requested, format.format(request.getDateRequested())));
-            } else {
-                tvRequested.setVisibility(View.GONE);
-            }
-            String note = request.getMessage();
-            if (note != null && !note.isEmpty()) {
-                TextView tvNote = row.findViewById(R.id.tvNote);
-                tvNote.setText(getString(R.string.label_join_note, note));
-                tvNote.setVisibility(View.VISIBLE);
-            }
+            showRequestedAndNote(row, request, format);
 
             MaterialButton btnAccept = row.findViewById(R.id.btnAccept);
             MaterialButton btnReject = row.findViewById(R.id.btnReject);
@@ -164,7 +160,7 @@ public class JoinRequestsActivity extends AppCompatActivity {
     }
 
     private void accept(JoinRequest request, MaterialButton btnAccept, MaterialButton btnReject) {
-        setButtonsEnabled(false, btnAccept, btnReject);
+        setEnabled(false, btnAccept, btnReject);
         progressBar.setVisibility(View.VISIBLE);
         joinRequestManager.acceptJoinRequest(request, authManager.getCurrentUser(),
                 success -> afterAction(success, R.string.msg_request_accepted, R.string.error_accept_request,
@@ -174,9 +170,9 @@ public class JoinRequestsActivity extends AppCompatActivity {
     // A rejected rider can't request the ride again, so the organizer confirms first
     private void confirmReject(JoinRequest request, MaterialButton btnAccept, MaterialButton btnReject) {
         new AlertDialog.Builder(this)
-                .setMessage(getString(R.string.confirm_reject_request, requesterName(request.getRequester())))
+                .setMessage(getString(R.string.confirm_reject_request, displayName(request.getRequester())))
                 .setPositiveButton(R.string.action_yes, (dialog, which) -> {
-                    setButtonsEnabled(false, btnAccept, btnReject);
+                    setEnabled(false, btnAccept, btnReject);
                     progressBar.setVisibility(View.VISIBLE);
                     joinRequestManager.rejectJoinRequest(request, authManager.getCurrentUser(),
                             success -> afterAction(success, R.string.msg_request_rejected,
@@ -186,25 +182,113 @@ public class JoinRequestsActivity extends AppCompatActivity {
                 .show();
     }
 
-    // Reloads after every answer so seat counts and the list stay current
-    private void afterAction(boolean success, int successMessageId, int errorMessageId,
-                             MaterialButton btnAccept, MaterialButton btnReject) {
-        progressBar.setVisibility(View.GONE);
-        Toast.makeText(this, success ? successMessageId : errorMessageId, Toast.LENGTH_LONG).show();
-        if (success) {
-            loadPendingRequests();
-        } else {
-            setButtonsEnabled(true, btnAccept, btnReject);
+    // ---- Join Ride Requests (requester) ----
+
+    private void loadMyRequests() {
+        startLoading();
+        joinRequestManager.getMyRequests(authManager.getCurrentUser(), requests -> {
+            if (requests != null) {
+                showMyRequests(requests);
+            }
+            finishLoading(requests == null);
+        });
+    }
+
+    private void showMyRequests(List<JoinRequest> requests) {
+        myRequestsContainer.removeAllViews();
+        showEmptyMessage(tvMyRequestsMessage, requests.isEmpty(), R.string.no_join_ride_requests);
+
+        SimpleDateFormat format = new SimpleDateFormat(DATE_FORMAT, Locale.US);
+        LayoutInflater inflater = LayoutInflater.from(this);
+        for (JoinRequest request : requests) {
+            Ride ride = request.getRide();
+            View row = inflater.inflate(R.layout.item_my_join_request, myRequestsContainer, false);
+
+            ((TextView) row.findViewById(R.id.tvRideTitle)).setText(ride.getTitle());
+            ((TextView) row.findViewById(R.id.tvOrganizer)).setText(getString(R.string.label_organizer,
+                    displayName(ride.getOrganizer())));
+            ((TextView) row.findViewById(R.id.tvRoute)).setText(getString(R.string.label_route,
+                    ride.getOrigin().getPOIName(), ride.getDestination().getPOIName()));
+            ((TextView) row.findViewById(R.id.tvDeparture)).setText(format.format(ride.getDepartureTime()));
+            ((TextView) row.findViewById(R.id.tvRequestStatus)).setText(getString(R.string.label_request_status,
+                    RequestStatus.valueOf(request.getStatus()).toString()));
+            showRequestedAndNote(row, request, format);
+
+            // Spec Feature 3: a user can cancel a pending request
+            if (RequestStatus.PENDING.name().equals(request.getStatus())) {
+                MaterialButton btnCancel = row.findViewById(R.id.btnCancelRequest);
+                btnCancel.setVisibility(View.VISIBLE);
+                btnCancel.setOnClickListener(v -> cancel(request, btnCancel));
+            }
+            myRequestsContainer.addView(row);
         }
     }
 
-    private static void setButtonsEnabled(boolean enabled, MaterialButton btnAccept, MaterialButton btnReject) {
-        btnAccept.setEnabled(enabled);
-        btnReject.setEnabled(enabled);
+    private void cancel(JoinRequest request, MaterialButton btnCancel) {
+        setEnabled(false, btnCancel);
+        progressBar.setVisibility(View.VISIBLE);
+        joinRequestManager.cancelJoinRequest(request, authManager.getCurrentUser(),
+                success -> afterAction(success, R.string.msg_request_cancelled, R.string.error_cancel_request,
+                        btnCancel));
     }
 
-    private static String requesterName(User requester) {
-        String nickname = requester.getNickname();
-        return nickname != null && !nickname.isEmpty() ? nickname : requester.getFullName();
+    // ---- Shared helpers ----
+
+    // Reloads both lists after every action so statuses and seat counts stay current
+    private void afterAction(boolean success, int successMessageId, int errorMessageId, MaterialButton... buttons) {
+        progressBar.setVisibility(View.GONE);
+        Toast.makeText(this, success ? successMessageId : errorMessageId, Toast.LENGTH_LONG).show();
+        if (success) {
+            loadAll();
+        } else {
+            setEnabled(true, buttons);
+        }
+    }
+
+    private void startLoading() {
+        loadsInProgress++;
+        progressBar.setVisibility(View.VISIBLE);
+    }
+
+    private void finishLoading(boolean failed) {
+        loadsInProgress--;
+        if (loadsInProgress <= 0) {
+            loadsInProgress = 0;
+            progressBar.setVisibility(View.GONE);
+        }
+        if (failed) {
+            Toast.makeText(this, R.string.error_load_join_requests, Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void showEmptyMessage(TextView message, boolean empty, int emptyTextId) {
+        message.setText(empty ? getString(emptyTextId) : "");
+        message.setVisibility(empty ? View.VISIBLE : View.GONE);
+    }
+
+    private void showRequestedAndNote(View row, JoinRequest request, SimpleDateFormat format) {
+        TextView tvRequested = row.findViewById(R.id.tvRequested);
+        if (request.getDateRequested() != null) {
+            tvRequested.setText(getString(R.string.label_requested, format.format(request.getDateRequested())));
+        } else {
+            tvRequested.setVisibility(View.GONE);
+        }
+        String note = request.getMessage();
+        if (note != null && !note.isEmpty()) {
+            TextView tvNote = row.findViewById(R.id.tvNote);
+            tvNote.setText(getString(R.string.label_join_note, note));
+            tvNote.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private static void setEnabled(boolean enabled, MaterialButton... buttons) {
+        for (MaterialButton button : buttons) {
+            button.setEnabled(enabled);
+        }
+    }
+
+    private static String displayName(User user) {
+        String nickname = user.getNickname();
+        return nickname != null && !nickname.isEmpty() ? nickname : user.getFullName();
     }
 }
