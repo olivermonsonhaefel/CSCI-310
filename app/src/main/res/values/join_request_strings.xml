@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="action_join_requests">Join Requests</string>
+    <string name="join_requests_title">Join Requests</string>
+    <string name="join_requests_subtitle">Requests to join the rides you organize</string>
+    <string name="label_pending_join_requests">Pending Join Requests</string>
+    <string name="no_pending_join_requests">No pending requests.</string>
+    <string name="error_load_join_requests">Could not load requests. Try again.</string>
+    <string name="label_riders_count">%1$d/%2$d riders</string>
+    <string name="label_requested">Requested %1$s</string>
+    <string name="label_join_note">Note: %1$s</string>
+    <string name="action_accept">Accept</string>
+    <string name="action_reject">Reject</string>
+    <string name="msg_request_accepted">Request accepted</string>
+    <string name="msg_request_rejected">Request rejected</string>
+    <string name="error_accept_request">Could not accept. The ride may be full, or the request was already answered.</string>
+    <string name="error_reject_request">Could not reject the request. Try again.</string>
+    <string name="confirm_reject_request">Reject this request? %1$s won\'t be able to request this ride again.</string>
+</resources>

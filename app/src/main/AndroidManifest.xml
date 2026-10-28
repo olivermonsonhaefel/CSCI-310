@@ -44,6 +44,9 @@
             android:name=".RideHistoryActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".JoinRequestsActivity"
+            android:exported="false" />
     </application>
 
 </manifest>

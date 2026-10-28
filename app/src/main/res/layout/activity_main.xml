@@ -104,7 +104,19 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/btnCreateRide" />
-
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnJoinRequests"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:backgroundTint="@color/usc_cardinal"
+            android:padding="14dp"
+            android:text="@string/action_join_requests"
+            android:textColor="@color/usc_gold"
+            android:textSize="16sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/btnMyRides" />
         <TextView
             android:id="@+id/tvSearchHeading"
             android:layout_width="wrap_content"
@@ -115,7 +127,7 @@
             android:textSize="22sp"
             android:textStyle="bold"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/btnMyRides" />
+            app:layout_constraintTop_toBottomOf="@id/btnJoinRequests" />
 
         <TextView
             android:id="@+id/tvSearchSubtitle"
