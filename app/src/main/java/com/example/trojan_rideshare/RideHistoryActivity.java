@@ -54,7 +54,9 @@ public class RideHistoryActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        ScreenInsets.enable(this);
         setContentView(R.layout.activity_ride_history);
+        ScreenInsets.pad(findViewById(R.id.historyScroll));
 
         authManager = AuthManager.getInstance();
         if (authManager.getCurrentUser() == null) {

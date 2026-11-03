@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js"></script>
+    <style>
+        html, body, #map { margin: 0; height: 100%; width: 100%; }
+        .marker {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .marker-label {
+            margin-bottom: 4px;
+            padding: 2px 8px;
+            border-radius: 8px;
+            background: #ffffff;
+            color: #111111;
+            border: 1px solid #111111;
+            font: bold 12px sans-serif;
+            white-space: nowrap;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+        }
+        .marker-pin {
+            width: 28px;
+            height: 36px;
+            line-height: 0;
+        }
+    </style>
+</head>
+<body>
+<div id="map"></div>
+<script>
+    var map;
+    var origin = null;
+    var destination = null;
+    var originMarker = null;
+    var destinationMarker = null;
+    var ignoreClick = false;
+
+    function startMap(token) {
+        if (!token) {
+            AndroidMap.onMapError();
+            return;
+        }
+        mapboxgl.accessToken = token;
+        map = new mapboxgl.Map({
+            container: "map",
+            style: "mapbox://styles/mapbox/streets-v12",
+            center: [-118.2851, 34.0224],
+            zoom: 13
+        });
+        map.addControl(new mapboxgl.NavigationControl());
+        map.on("load", function () {
+            AndroidMap.onMapReady();
+        });
+        map.on("error", function () {
+            if (!map.loaded()) {
+                AndroidMap.onMapError();
+            }
+        });
+        map.on("click", function (event) {
+            if (ignoreClick) {
+                return;
+            }
+            var lat = event.lngLat.lat;
+            var lng = event.lngLat.lng;
+            if (!origin) {
+                setOrigin(lat, lng, true);
+            } else {
+                setDestination(lat, lng, true);
+            }
+        });
+    }
+
+    function pinElement(label, fill, hole) {
+        var el = document.createElement("div");
+        el.className = "marker";
+        var caption = document.createElement("div");
+        caption.className = "marker-label";
+        caption.textContent = label;
+        var pin = document.createElement("div");
+        pin.className = "marker-pin";
+        pin.innerHTML = '<svg width="28" height="36" viewBox="0 0 28 36" xmlns="http://www.w3.org/2000/svg">'
+            + '<path d="M14 35C14 35 2 22.5 2 14a12 12 0 1 1 24 0C26 22.5 14 35 14 35z" fill="'
+            + fill + '" stroke="#111111" stroke-width="1.5"/>'
+            + '<circle cx="14" cy="14" r="4.5" fill="' + hole + '"/>'
+            + '</svg>';
+        el.appendChild(caption);
+        el.appendChild(pin);
+        return el;
+    }
+
+    function placeMarker(label, fill, hole, lat, lng, onDragEnd) {
+        var marker = new mapboxgl.Marker({
+            element: pinElement(label, fill, hole),
+            anchor: "bottom",
+            draggable: true
+        }).setLngLat([lng, lat]).addTo(map);
+        marker.on("dragstart", function () {
+            ignoreClick = true;
+        });
+        marker.on("dragend", function () {
+            var point = marker.getLngLat();
+            onDragEnd(point.lat, point.lng);
+            setTimeout(function () { ignoreClick = false; }, 0);
+        });
+        return marker;
+    }
+
+    function setOrigin(lat, lng, notify) {
+        origin = { lat: lat, lng: lng };
+        if (originMarker) {
+            originMarker.remove();
+        }
+        originMarker = placeMarker("Origin", "#FFCC00", "#111111", lat, lng, function (dragLat, dragLng) {
+            origin = { lat: dragLat, lng: dragLng };
+            AndroidMap.onOriginSet(dragLat, dragLng);
+        });
+        if (notify) {
+            AndroidMap.onOriginSet(lat, lng);
+        }
+    }
+
+    function setDestination(lat, lng, notify) {
+        destination = { lat: lat, lng: lng };
+        if (destinationMarker) {
+            destinationMarker.remove();
+        }
+        destinationMarker = placeMarker("Destination", "#990000", "#FFCC00", lat, lng, function (dragLat, dragLng) {
+            destination = { lat: dragLat, lng: dragLng };
+            AndroidMap.onDestinationSet(dragLat, dragLng);
+        });
+        if (notify) {
+            AndroidMap.onDestinationSet(lat, lng);
+        }
+    }
+
+    function showPins(originLat, originLng, hasDestination, destinationLat, destinationLng) {
+        setOrigin(originLat, originLng, false);
+        if (hasDestination) {
+            setDestination(destinationLat, destinationLng, false);
+        }
+    }
+
+    function clearPins() {
+        if (originMarker) {
+            originMarker.remove();
+        }
+        if (destinationMarker) {
+            destinationMarker.remove();
+        }
+        originMarker = null;
+        destinationMarker = null;
+        origin = null;
+        destination = null;
+        AndroidMap.onCleared();
+    }
+</script>
+</body>
+</html>

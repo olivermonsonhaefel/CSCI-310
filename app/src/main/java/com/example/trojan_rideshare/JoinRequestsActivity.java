@@ -45,7 +45,9 @@ public class JoinRequestsActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        ScreenInsets.enable(this);
         setContentView(R.layout.activity_join_requests);
+        ScreenInsets.pad(findViewById(R.id.joinRequestsScroll));
 
         authManager = AuthManager.getInstance();
         if (authManager.getCurrentUser() == null) {

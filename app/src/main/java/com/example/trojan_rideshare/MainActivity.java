@@ -2,12 +2,10 @@ package com.example.trojan_rideshare;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.View;
+import android.widget.ScrollView;
 
-import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.button.MaterialButton;
 
@@ -18,16 +16,11 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
+        ScreenInsets.enable(this);
         setContentView(R.layout.activity_main);
+        ScreenInsets.pad(findViewById(R.id.searchScroll));
 
         authManager = AuthManager.getInstance();
-
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
-        });
 
         MaterialButton btnCreateRide = findViewById(R.id.btnCreateRide);
         btnCreateRide.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, CreateRideActivity.class)));
@@ -39,6 +32,24 @@ public class MainActivity extends AppCompatActivity {
 
         MaterialButton btnJoinRequests = findViewById(R.id.btnJoinRequests);
         btnJoinRequests.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, JoinRequestsActivity.class)));
+
+        View searchHeading = findViewById(R.id.tvSearchHeading);
+        View searchSubtitle = findViewById(R.id.tvSearchSubtitle);
+        View searchForm = findViewById(R.id.searchForm);
+        MaterialButton btnSearchRides = findViewById(R.id.btnSearchRides);
+        btnSearchRides.setOnClickListener(v -> {
+            boolean show = searchForm.getVisibility() != View.VISIBLE;
+            int visibility = show ? View.VISIBLE : View.GONE;
+            searchHeading.setVisibility(visibility);
+            searchSubtitle.setVisibility(visibility);
+            searchForm.setVisibility(visibility);
+            if (show) {
+                searchForm.post(() -> {
+                    ScrollView scroll = findViewById(R.id.searchScroll);
+                    scroll.smoothScrollTo(0, searchHeading.getTop());
+                });
+            }
+        });
 
         MaterialButton btnViewBalance = findViewById(R.id.btnViewBalance);
         btnViewBalance.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, BalanceActivity.class)));

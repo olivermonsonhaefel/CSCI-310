@@ -40,7 +40,9 @@ public class RideDetailActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        ScreenInsets.enable(this);
         setContentView(R.layout.activity_ride_detail);
+        ScreenInsets.pad(findViewById(R.id.detailScroll));
 
         tvDetails = findViewById(R.id.tvDetails);
         tvUnavailable = findViewById(R.id.tvUnavailable);

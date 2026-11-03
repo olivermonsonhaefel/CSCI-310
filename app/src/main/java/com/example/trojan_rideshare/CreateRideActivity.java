@@ -1,13 +1,19 @@
 package com.example.trojan_rideshare;
 
+import android.app.Activity;
 import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
+import android.content.Intent;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.button.MaterialButton;
@@ -35,11 +41,22 @@ public class CreateRideActivity extends AppCompatActivity {
 
     private final Calendar departure = Calendar.getInstance();
     private final MapboxGeocoder geocoder = new MapboxGeocoder();
+    private Location pinnedOrigin;
+    private Location pinnedDestination;
+    private final ActivityResultLauncher<Intent> mapLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
+                    applyMapSelection(result.getData());
+                }
+            });
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        ScreenInsets.enable(this);
         setContentView(R.layout.activity_create_ride);
+        ScreenInsets.pad(findViewById(R.id.createRideScroll));
 
         rideManager = new RideManager();
 
@@ -74,6 +91,10 @@ public class CreateRideActivity extends AppCompatActivity {
         etRideDate.setOnClickListener(v -> pickDate());
         etDepartureTime.setOnClickListener(v -> pickTime());
         btnPostRide.setOnClickListener(v -> validateAndPost());
+        findViewById(R.id.btnSetOnMap).setOnClickListener(v ->
+                mapLauncher.launch(new Intent(this, MapPinActivity.class)));
+        forgetPinIfEdited(etOrigin, true);
+        forgetPinIfEdited(etDestination, false);
         tvCancel.setOnClickListener(v -> finish());
 
         String rideId = getIntent().getStringExtra(EXTRA_RIDE_ID);
@@ -183,13 +204,15 @@ public class CreateRideActivity extends AppCompatActivity {
 
         setLoading(true);
 
-        lookUpLocation(origin, editingRide != null ? editingRide.getOrigin() : null, originLocation -> {
+        lookUpLocation(origin, matchingPlace(origin, pinnedOrigin,
+                editingRide != null ? editingRide.getOrigin() : null), originLocation -> {
             if (originLocation == null) {
                 tilOrigin.setError("Please enter a valid origin.");
                 setLoading(false);
                 return;
             }
-            lookUpLocation(destination, editingRide != null ? editingRide.getDestination() : null, destinationLocation -> {
+            lookUpLocation(destination, matchingPlace(destination, pinnedDestination,
+                    editingRide != null ? editingRide.getDestination() : null), destinationLocation -> {
                 if (destinationLocation == null) {
                     tilDestination.setError("Please enter a valid destination.");
                     setLoading(false);
@@ -220,6 +243,58 @@ public class CreateRideActivity extends AppCompatActivity {
                         });
             });
         });
+    }
+
+    private void applyMapSelection(Intent data) {
+        String originName = data.getStringExtra(MapPinActivity.EXTRA_ORIGIN_NAME);
+        String destinationName = data.getStringExtra(MapPinActivity.EXTRA_DESTINATION_NAME);
+        if (originName == null || destinationName == null) {
+            return;
+        }
+        pinnedOrigin = new Location(originName,
+                data.getDoubleExtra(MapPinActivity.EXTRA_ORIGIN_LAT, 0),
+                data.getDoubleExtra(MapPinActivity.EXTRA_ORIGIN_LON, 0));
+        pinnedDestination = new Location(destinationName,
+                data.getDoubleExtra(MapPinActivity.EXTRA_DESTINATION_LAT, 0),
+                data.getDoubleExtra(MapPinActivity.EXTRA_DESTINATION_LON, 0));
+        etOrigin.setText(originName);
+        etDestination.setText(destinationName);
+        tilOrigin.setError(null);
+        tilDestination.setError(null);
+    }
+
+    private void forgetPinIfEdited(TextInputEditText field, boolean originField) {
+        field.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                Location pinned = originField ? pinnedOrigin : pinnedDestination;
+                if (pinned != null && !s.toString().trim().equals(pinned.getPOIName())) {
+                    if (originField) {
+                        pinnedOrigin = null;
+                    } else {
+                        pinnedDestination = null;
+                    }
+                }
+            }
+        });
+    }
+
+    private static Location matchingPlace(String keyword, Location pinned, Location existing) {
+        if (pinned != null && keyword.equals(pinned.getPOIName())) {
+            return pinned;
+        }
+        if (existing != null && keyword.equals(existing.getPOIName())) {
+            return existing;
+        }
+        return null;
     }
 
     private void lookUpLocation(String keyword, Location current, Consumer<Location> onFound) {

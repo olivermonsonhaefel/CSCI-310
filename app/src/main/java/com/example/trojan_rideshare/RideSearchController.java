@@ -1,9 +1,12 @@
 package com.example.trojan_rideshare;
 
+import android.app.Activity;
 import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
 import android.content.Intent;
 import android.graphics.Typeface;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ArrayAdapter;
@@ -14,6 +17,8 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
@@ -27,6 +32,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.Consumer;
 
 /**
  * Search form used on the home screen. Defaults: radius 1 mile, date tomorrow,
@@ -57,11 +63,21 @@ public class RideSearchController {
 
     private Location originLocation;
     private Location destinationLocation;
+    private Location pinnedOrigin;
+    private Location pinnedDestination;
     private List<Ride> filteredResults = new ArrayList<>();
     private boolean resultsReady = false;
+    private final ActivityResultLauncher<Intent> mapLauncher;
 
     public RideSearchController(AppCompatActivity activity) {
         this.activity = activity;
+        this.mapLauncher = activity.registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
+                        applyMapSelection(result.getData());
+                    }
+                });
     }
 
     public void start() {
@@ -92,6 +108,12 @@ public class RideSearchController {
         etWindowStart.setOnClickListener(v -> pickTime(windowStart, etWindowStart, tilWindowStart));
         etWindowEnd.setOnClickListener(v -> pickTime(windowEnd, etWindowEnd, tilWindowEnd));
         btnSearch.setOnClickListener(v -> validateAndSearch());
+        MaterialButton btnSetOnMap = activity.findViewById(R.id.btnSetOnMap);
+        if (btnSetOnMap != null) {
+            btnSetOnMap.setOnClickListener(v -> mapLauncher.launch(new Intent(activity, MapPinActivity.class)));
+        }
+        forgetPinIfEdited(etOrigin, true);
+        forgetPinIfEdited(etDestination, false);
         if (tvCancel != null) {
             tvCancel.setOnClickListener(v -> activity.finish());
         }
@@ -206,14 +228,14 @@ public class RideSearchController {
 
         setLoading(true);
         double radiusMiles = radius;
-        geocoder.lookUp(origin, originResult -> {
+        resolvePlace(origin, pinnedOrigin, originResult -> {
             if (originResult == null) {
                 setLoading(false);
                 tilOrigin.setError(ERROR_ORIGIN);
                 showError(ERROR_ORIGIN, tilOrigin);
                 return;
             }
-            geocoder.lookUp(destination, destinationResult -> {
+            resolvePlace(destination, pinnedDestination, destinationResult -> {
                 if (destinationResult == null) {
                     setLoading(false);
                     tilDestination.setError(ERROR_DESTINATION);
@@ -223,8 +245,58 @@ public class RideSearchController {
                 originLocation = originResult;
                 destinationLocation = destinationResult;
                 runSearch(radiusMiles);
-            }, this::showLocationUnavailable);
-        }, this::showLocationUnavailable);
+            });
+        });
+    }
+
+    private void applyMapSelection(Intent data) {
+        String originName = data.getStringExtra(MapPinActivity.EXTRA_ORIGIN_NAME);
+        String destinationName = data.getStringExtra(MapPinActivity.EXTRA_DESTINATION_NAME);
+        if (originName == null || destinationName == null) {
+            return;
+        }
+        pinnedOrigin = new Location(originName,
+                data.getDoubleExtra(MapPinActivity.EXTRA_ORIGIN_LAT, 0),
+                data.getDoubleExtra(MapPinActivity.EXTRA_ORIGIN_LON, 0));
+        pinnedDestination = new Location(destinationName,
+                data.getDoubleExtra(MapPinActivity.EXTRA_DESTINATION_LAT, 0),
+                data.getDoubleExtra(MapPinActivity.EXTRA_DESTINATION_LON, 0));
+        etOrigin.setText(originName);
+        etDestination.setText(destinationName);
+        tilOrigin.setError(null);
+        tilDestination.setError(null);
+    }
+
+    private void forgetPinIfEdited(TextInputEditText field, boolean originField) {
+        field.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                Location pinned = originField ? pinnedOrigin : pinnedDestination;
+                if (pinned != null && !s.toString().trim().equals(pinned.getPOIName())) {
+                    if (originField) {
+                        pinnedOrigin = null;
+                    } else {
+                        pinnedDestination = null;
+                    }
+                }
+            }
+        });
+    }
+
+    private void resolvePlace(String keyword, Location pinned, Consumer<Location> onFound) {
+        if (pinned != null && keyword.equals(pinned.getPOIName())) {
+            onFound.accept(pinned);
+            return;
+        }
+        geocoder.lookUp(keyword, onFound, this::showLocationUnavailable);
     }
 
     private void runSearch(double radiusMiles) {

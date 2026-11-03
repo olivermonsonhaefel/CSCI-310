@@ -12,14 +12,9 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
-
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.checkbox.MaterialCheckBox;
@@ -56,17 +51,13 @@ public class BalanceActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
+        ScreenInsets.enable(this);
         setContentView(R.layout.activity_balance);
+        ScreenInsets.pad(findViewById(R.id.balanceRoot));
         manager = new CostSplitManager();
         message = findViewById(R.id.balanceMessage);
         personFilter = findViewById(R.id.balancePersonFilter);
         settledOnly = findViewById(R.id.balanceSettledOnly);
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.balanceRoot), (view, insets) -> {
-            Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.ime());
-            view.setPadding(bars.left, bars.top, bars.right, bars.bottom);
-            return insets;
-        });
         findViewById(R.id.balanceRefresh).setOnClickListener(v -> {
             if (!busy) refresh();
         });

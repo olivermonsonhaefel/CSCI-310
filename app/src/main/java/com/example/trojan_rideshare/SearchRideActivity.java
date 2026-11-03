@@ -13,7 +13,9 @@ public class SearchRideActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        ScreenInsets.enable(this);
         setContentView(R.layout.activity_search_ride);
+        ScreenInsets.pad(findViewById(R.id.searchScroll));
 
         if (AuthManager.getInstance().getCurrentUser() == null) {
             startActivity(new Intent(this, LoginActivity.class));

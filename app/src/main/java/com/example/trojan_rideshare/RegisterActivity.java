@@ -22,7 +22,9 @@ public class RegisterActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        ScreenInsets.enable(this);
         setContentView(R.layout.activity_register);
+        ScreenInsets.pad(findViewById(R.id.registerRoot));
 
         authManager = AuthManager.getInstance();
 

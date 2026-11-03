@@ -14,6 +14,7 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.util.Locale;
 import java.util.function.Consumer;
 
 /**
@@ -69,6 +70,53 @@ public class MapboxGeocoder {
                 mainHandler.post(() -> onFound.accept(location));
             } catch (IOException | JSONException e) {
                 Log.e(TAG, "Mapbox lookup failed", e);
+                mainHandler.post(() -> onError.accept(LOCATION_UNAVAILABLE));
+            }
+        }).start();
+    }
+
+    /**
+     * Names the place under a map pin. The Location keeps the pin coordinates.
+     * onFound receives null when Mapbox has no name for that point.
+     * Both callbacks run on the main thread.
+     */
+    public void reverseLookUp(double lat, double lon, Consumer<Location> onFound, Consumer<String> onError) {
+        new Thread(() -> {
+            try {
+                URL url = new URL(String.format(Locale.US,
+                        "https://api.mapbox.com/geocoding/v5/mapbox.places/%.6f,%.6f.json?limit=1&access_token=%s",
+                        lon, lat, BuildConfig.MAPBOX_TOKEN));
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                connection.setConnectTimeout(10000);
+                connection.setReadTimeout(10000);
+                if (connection.getResponseCode() != HttpURLConnection.HTTP_OK) {
+                    Log.e(TAG, "Mapbox reverse returned HTTP " + connection.getResponseCode());
+                    mainHandler.post(() -> onError.accept(LOCATION_UNAVAILABLE));
+                    return;
+                }
+
+                StringBuilder body = new StringBuilder();
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        body.append(line);
+                    }
+                }
+
+                JSONArray features = new JSONObject(body.toString()).getJSONArray("features");
+                if (features.length() == 0) {
+                    mainHandler.post(() -> onFound.accept(null));
+                    return;
+                }
+                String name = features.getJSONObject(0).optString("place_name", "").trim();
+                if (name.isEmpty()) {
+                    mainHandler.post(() -> onFound.accept(null));
+                    return;
+                }
+                Location location = new Location(name, lat, lon);
+                mainHandler.post(() -> onFound.accept(location));
+            } catch (IOException | JSONException e) {
+                Log.e(TAG, "Mapbox reverse lookup failed", e);
                 mainHandler.post(() -> onError.accept(LOCATION_UNAVAILABLE));
             }
         }).start();
