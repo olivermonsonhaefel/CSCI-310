@@ -101,7 +101,7 @@
     <string name="msg_ride_updated">Ride updated</string>
     <string name="error_update_ride">Could not update ride. Try again.</string>
     <string name="edit_ride_title">Edit Ride</string>
-    <string name="edit_ride_subtitle">Only the note can be changed after posting</string>
+    <string name="edit_ride_subtitle">Only the time and note can be changed after posting</string>
     <string name="action_save_changes">Save Changes</string>
     <string name="prompt_join_note">Note to the organizer (optional)</string>
     <string-array name="history_status_options">
