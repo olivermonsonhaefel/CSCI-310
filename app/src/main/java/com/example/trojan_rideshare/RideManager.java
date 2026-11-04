@@ -27,7 +27,10 @@ public class RideManager {
     private static final String USERS = "users";
     private static final int MIN_RIDERS = 2;
     private static final int MAX_RIDERS = 6;
-    private static final long LEAVE_CUTOFF_MILLIS = 3 * 60 * 60 * 1000L; // spec: leave up to 3 hours before
+    static final long LEAVE_CUTOFF_MILLIS = 3 * 60 * 60 * 1000L; // spec: leave up to 3 hours before
+    static final String MSG_NOT_A_RIDER = "You are not a rider on this ride.";
+    static final String MSG_LEAVE_COMPLETED = "Completed rides can't be left.";
+    static final String MSG_LEAVE_TOO_LATE = "Rides can only be left up to 3 hours before departure.";
     private static final String FINISHED_RIDE_ERROR = "Completed and cancelled rides can't be changed";
 
     private final FirebaseFirestore db;
@@ -97,10 +100,10 @@ public class RideManager {
             transaction.set(ref, toMap(updated));
             return updated;
         }).addOnSuccessListener(callback::accept)
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "editRide failed", e);
-                    callback.accept(null);
-                });
+        .addOnFailureListener(e -> {
+            Log.e(TAG, "editRide failed", e);
+            callback.accept(null);
+        });
     }
 
     /** Only the organizer may cancel. */
@@ -117,10 +120,10 @@ public class RideManager {
             transaction.set(ref, toMap(rebuild(current, current.getOrganizer(), current.getRiders(), Status.CANCELLED)));
             return null;
         }).addOnSuccessListener(result -> callback.accept(true))
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "cancelRide failed", e);
-                    callback.accept(false);
-                });
+        .addOnFailureListener(e -> {
+            Log.e(TAG, "cancelRide failed", e);
+            callback.accept(false);
+        });
     }
 
     /**
@@ -145,15 +148,17 @@ public class RideManager {
             transaction.set(ref, toMap(rebuild(current, current.getOrganizer(), current.getRiders(), status)));
             return null;
         }).addOnSuccessListener(result -> callback.accept(true))
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "updateRideStatus failed", e);
-                    callback.accept(false);
-                });
+        .addOnFailureListener(e -> {
+            Log.e(TAG, "updateRideStatus failed", e);
+            callback.accept(false);
+        });
     }
 
     /**
      * The current user leaves the ride (spec Feature 3). Not allowed on Completed rides or
-     * within 3 hours of departure. If the organizer leaves: the ride is cancelled when they are
+     * within 3 hours of departure (the organizer too). The cutoff uses the current departureTime, so a
+     * delayed ride's updated time counts. The screen can call checkCanLeave first to show why leaving is
+     * blocked. If the organizer leaves: the ride is cancelled when they are
      * the only rider, otherwise the most recently joined rider becomes the organizer.
      */
     public void leaveRide(Ride ride, Consumer<Boolean> callback) {
@@ -166,14 +171,9 @@ public class RideManager {
         DocumentReference ref = db.collection(RIDES).document(ride.getRideID());
         db.runTransaction(transaction -> {
             Ride current = toRide(transaction.get(ref));
-            if (!current.getRiders().contains(uid)) {
-                throw abort("User is not a rider on this ride");
-            }
-            if (Status.COMPLETED.name().equals(current.getRideStatus())) {
-                throw abort("Completed rides can't be left");
-            }
-            if (System.currentTimeMillis() > current.getDepartureTime().getTime() - LEAVE_CUTOFF_MILLIS) {
-                throw abort("Rides can only be left up to 3 hours before departure");
+            String error = checkCanLeave(current, uid, new Date());
+            if (error != null) {
+                throw abort(error);
             }
 
             Status status = Status.valueOf(current.getRideStatus());
@@ -193,10 +193,28 @@ public class RideManager {
             transaction.set(ref, toMap(rebuild(current, organizer, riders, status)));
             return null;
         }).addOnSuccessListener(result -> callback.accept(true))
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "leaveRide failed", e);
-                    callback.accept(false);
-                });
+        .addOnFailureListener(e -> {
+            Log.e(TAG, "leaveRide failed", e);
+            callback.accept(false);
+        });
+    }
+
+    /**
+     * Returns why riderId can't leave the ride at time now, or null if they can. Completed rides can't be
+     * left at all; otherwise leaving closes 3 hours before departure, for organizers and riders alike.
+     */
+    static String checkCanLeave(Ride ride, String riderId, Date now) {
+        if (!ride.getRiders().contains(riderId)) {
+            return MSG_NOT_A_RIDER;
+        }
+        if (Status.COMPLETED.name().equals(ride.getRideStatus())) {
+            return MSG_LEAVE_COMPLETED;
+        }
+        Date departure = ride.getDepartureTime();
+        if (departure == null || now.getTime() > departure.getTime() - LEAVE_CUTOFF_MILLIS) {
+            return MSG_LEAVE_TOO_LATE;
+        }
+        return null;
     }
 
     /** Returns an error message, or null if the ride details are valid. */

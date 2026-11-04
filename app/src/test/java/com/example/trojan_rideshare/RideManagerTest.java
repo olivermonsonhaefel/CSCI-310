@@ -2,6 +2,7 @@ package com.example.trojan_rideshare;
 
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 
@@ -50,6 +51,52 @@ public class RideManagerTest {
         assertEquals(CapacityStatus.N_A.name(), ride(Status.COMPLETED).getCapacityStatus());
         assertEquals(CapacityStatus.N_A.name(), ride(Status.CANCELLED).getCapacityStatus());
         assertEquals(CapacityStatus.OPEN.name(), ride(Status.ON_TIME).getCapacityStatus());
+    }
+
+    // ---- leaving ----
+
+    private static final long HOUR = 60 * 60 * 1000L;
+    private static final Date RIDE_TIME = new Date(100 * HOUR);
+
+    @Test
+    public void riderCanLeaveMoreThanThreeHoursBefore() {
+        assertNull(RideManager.checkCanLeave(groupRide(Status.ON_TIME), "me", new Date(RIDE_TIME.getTime() - 4 * HOUR)));
+    }
+
+    @Test
+    public void riderCanLeaveExactlyThreeHoursBefore() {
+        assertNull(RideManager.checkCanLeave(groupRide(Status.ON_TIME), "me", new Date(RIDE_TIME.getTime() - 3 * HOUR)));
+    }
+
+    @Test
+    public void riderCannotLeaveWithinThreeHours() {
+        assertEquals(RideManager.MSG_LEAVE_TOO_LATE,
+                RideManager.checkCanLeave(groupRide(Status.ON_TIME), "me", new Date(RIDE_TIME.getTime() - HOUR)));
+    }
+
+    @Test
+    public void organizerCannotLeaveWithinThreeHours() {
+        assertEquals(RideManager.MSG_LEAVE_TOO_LATE,
+                RideManager.checkCanLeave(groupRide(Status.ON_TIME), "org", new Date(RIDE_TIME.getTime() - HOUR)));
+    }
+
+    @Test
+    public void completedRideCannotBeLeft() {
+        Date longAfter = new Date(RIDE_TIME.getTime() + 24 * HOUR);
+        assertEquals(RideManager.MSG_LEAVE_COMPLETED, RideManager.checkCanLeave(groupRide(Status.COMPLETED), "me", longAfter));
+        assertEquals(RideManager.MSG_LEAVE_COMPLETED, RideManager.checkCanLeave(groupRide(Status.COMPLETED), "org", longAfter));
+    }
+
+    @Test
+    public void nonRiderCannotLeave() {
+        assertEquals(RideManager.MSG_NOT_A_RIDER,
+                RideManager.checkCanLeave(groupRide(Status.ON_TIME), "stranger", new Date(0)));
+    }
+
+    private static Ride groupRide(Status status) {
+        User organizer = new User("org", "org@usc.edu", "", "Organizer", "org", 2027, 0);
+        return new Ride("ride2", organizer, "To LAX", USC, LAX, RIDE_TIME, 3, 40, "",
+                Arrays.asList("org", "me"), status.name());
     }
 
     private static Ride ride(Status status) {
