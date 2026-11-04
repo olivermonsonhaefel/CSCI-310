@@ -380,7 +380,7 @@ public class RideSearchController {
             double divisor = ride.getMaxRiders() == 0 ? 1 : ride.getMaxRiders();
             String perPerson = String.format(Locale.US, "%.2f", ride.getTotalExpectedCost() / divisor);
             ((TextView) row.findViewById(R.id.tvCost)).setText(activity.getString(R.string.label_expected_cost,
-                    ride.getTotalExpectedCost(), perPerson));
+                    String.format(Locale.US, "%.2f", ride.getTotalExpectedCost()), perPerson));
             row.setOnClickListener(v -> {
                 Intent intent = new Intent(activity, RideDetailActivity.class);
                 intent.putExtra(RideDetailActivity.EXTRA_RIDE_ID, ride.getRideID());
