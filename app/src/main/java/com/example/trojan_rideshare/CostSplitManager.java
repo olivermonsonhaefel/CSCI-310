@@ -119,6 +119,9 @@ public class CostSplitManager {
             for (Expense expense : expenses) {
                 transaction.set(db.collection("expenses").document(expense.getId()), toMap(expense));
             }
+            // The organizer owes no expense, so their own share is kept on the ride for the monthly summary.
+            transaction.update(db.collection("rides").document(current.getRideID()), "organizerShare",
+                    dollars(shares.get(current.getOrganizer().getId())));
             return null;
         }).addOnSuccessListener(result -> callback.accept(true))
                 .addOnFailureListener(e -> fail(callback, "divideCost failed", e));
