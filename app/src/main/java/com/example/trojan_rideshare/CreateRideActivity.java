@@ -102,9 +102,22 @@ public class CreateRideActivity extends AppCompatActivity {
             ((TextView) findViewById(R.id.tvTitle)).setText(R.string.edit_ride_title);
             ((TextView) findViewById(R.id.tvSubtitle)).setText(R.string.edit_ride_subtitle);
             btnPostRide.setText(R.string.action_save_changes);
+            lockPostedFields();
             setLoading(true);
             new RideSearchManager().loadRide(rideId, this::fillFields);
         }
+    }
+
+    /** After posting, only the note can change. */
+    private void lockPostedFields() {
+        tilRideTitle.setEnabled(false);
+        tilOrigin.setEnabled(false);
+        tilDestination.setEnabled(false);
+        tilRideDate.setEnabled(false);
+        tilDepartureTime.setEnabled(false);
+        tilMaxRiders.setEnabled(false);
+        tilExpectedCost.setEnabled(false);
+        findViewById(R.id.btnSetOnMap).setVisibility(View.GONE);
     }
 
     private void fillFields(Ride ride) {
@@ -121,7 +134,7 @@ public class CreateRideActivity extends AppCompatActivity {
         departure.setTime(ride.getDepartureTime());
         showDeparture();
         etMaxRiders.setText(String.valueOf(ride.getMaxRiders()));
-        etExpectedCost.setText(String.valueOf(ride.getTotalExpectedCost()));
+        etExpectedCost.setText(String.format(Locale.US, "%.2f", ride.getTotalExpectedCost()));
         etNote.setText(ride.getNote());
     }
 
@@ -147,7 +160,26 @@ public class CreateRideActivity extends AppCompatActivity {
         tilDepartureTime.setError(null);
     }
 
+    private void saveNote() {
+        String note = etNote.getText() != null ? etNote.getText().toString().trim() : "";
+        setLoading(true);
+        rideManager.editRide(editingRide, note.isEmpty() ? null : note, updated -> {
+            setLoading(false);
+            if (updated != null) {
+                Toast.makeText(this, R.string.msg_ride_updated, Toast.LENGTH_LONG).show();
+                finish();
+            } else {
+                Toast.makeText(this, R.string.error_update_ride, Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
     private void validateAndPost() {
+        if (editingRide != null) {
+            saveNote();
+            return;
+        }
+
         // Clear previous errors
         tilRideTitle.setError(null);
         tilOrigin.setError(null);
@@ -181,7 +213,7 @@ public class CreateRideActivity extends AppCompatActivity {
             isValid = false;
         }
 
-        if (editingRide == null && !departure.getTime().after(new Date())) {
+        if (!departure.getTime().after(new Date())) {
             tilDepartureTime.setError("Departure must be in the future");
             isValid = false;
         }
@@ -192,9 +224,9 @@ public class CreateRideActivity extends AppCompatActivity {
             isValid = false;
         }
 
-        int expectedCost = parseInt(costText);
+        double expectedCost = RideManager.parseCost(costText);
         if (expectedCost < 0) {
-            tilExpectedCost.setError("Please enter an expected cost");
+            tilExpectedCost.setError("Please enter a cost with up to 2 decimals");
             isValid = false;
         }
 
@@ -204,31 +236,16 @@ public class CreateRideActivity extends AppCompatActivity {
 
         setLoading(true);
 
-        lookUpLocation(origin, matchingPlace(origin, pinnedOrigin,
-                editingRide != null ? editingRide.getOrigin() : null), originLocation -> {
+        lookUpLocation(origin, pinnedOrigin, originLocation -> {
             if (originLocation == null) {
                 tilOrigin.setError("Please enter a valid origin.");
                 setLoading(false);
                 return;
             }
-            lookUpLocation(destination, matchingPlace(destination, pinnedDestination,
-                    editingRide != null ? editingRide.getDestination() : null), destinationLocation -> {
+            lookUpLocation(destination, pinnedDestination, destinationLocation -> {
                 if (destinationLocation == null) {
                     tilDestination.setError("Please enter a valid destination.");
                     setLoading(false);
-                    return;
-                }
-                if (editingRide != null) {
-                    rideManager.editRide(editingRide, title, originLocation, destinationLocation, departure.getTime(),
-                            maxRiders, expectedCost, note.isEmpty() ? null : note, updated -> {
-                                setLoading(false);
-                                if (updated != null) {
-                                    Toast.makeText(this, R.string.msg_ride_updated, Toast.LENGTH_LONG).show();
-                                    finish();
-                                } else {
-                                    Toast.makeText(this, R.string.error_update_ride, Toast.LENGTH_LONG).show();
-                                }
-                            });
                     return;
                 }
                 rideManager.createRide(title, originLocation, destinationLocation, departure.getTime(),
@@ -285,16 +302,6 @@ public class CreateRideActivity extends AppCompatActivity {
                 }
             }
         });
-    }
-
-    private static Location matchingPlace(String keyword, Location pinned, Location existing) {
-        if (pinned != null && keyword.equals(pinned.getPOIName())) {
-            return pinned;
-        }
-        if (existing != null && keyword.equals(existing.getPOIName())) {
-            return existing;
-        }
-        return null;
     }
 
     private void lookUpLocation(String keyword, Location current, Consumer<Location> onFound) {

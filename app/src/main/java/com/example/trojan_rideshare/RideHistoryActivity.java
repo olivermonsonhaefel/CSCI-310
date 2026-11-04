@@ -235,8 +235,8 @@ public class RideHistoryActivity extends AppCompatActivity {
                 tvStatus.setText(getString(R.string.label_status_riders, status,
                         CapacityStatus.valueOf(ride.getCapacityStatus()).toString(),
                         ride.getNumOfRiders(), ride.getMaxRiders()));
-                String perPerson = String.format(Locale.US, "%.2f", ride.getTotalExpectedCost() / (double) ride.getMaxRiders());
-                tvCost.setText(getString(R.string.label_expected_cost, ride.getTotalExpectedCost(), perPerson));
+                String perPerson = String.format(Locale.US, "%.2f", ride.getTotalExpectedCost() / ride.getMaxRiders());
+                tvCost.setText(getString(R.string.label_expected_cost, money(ride.getTotalExpectedCost()), perPerson));
             } else {
                 tvStatus.setText(getString(R.string.label_history_status, status, ride.getNumOfRiders()));
                 if (Status.COMPLETED.name().equals(ride.getRideStatus())) {
@@ -291,7 +291,7 @@ public class RideHistoryActivity extends AppCompatActivity {
         MaterialButton btnCancel = view.findViewById(R.id.btnCancelRide);
         MaterialButton btnLeave = view.findViewById(R.id.btnLeaveRide);
 
-        int organizerOnly = isOrganizer ? View.VISIBLE : View.GONE;
+        int organizerOnly = isOrganizer && !RideManager.isFinished(ride) ? View.VISIBLE : View.GONE;
         btnEdit.setVisibility(organizerOnly);
         btnStatus.setVisibility(organizerOnly);
         btnCancel.setVisibility(organizerOnly);
@@ -322,12 +322,21 @@ public class RideHistoryActivity extends AppCompatActivity {
     }
 
     private void pickStatus(Ride ride) {
-        Status[] choices = {Status.ON_TIME, Status.DELAYED, Status.COMPLETED};
+        List<Status> choices = new ArrayList<>();
+        for (Status status : new Status[]{Status.ON_TIME, Status.DELAYED, Status.COMPLETED}) {
+            if (RideManager.checkStatusChange(ride, status, new java.util.Date()) == null) {
+                choices.add(status);
+            }
+        }
+        String[] labels = new String[choices.size()];
+        for (int i = 0; i < labels.length; i++) {
+            labels[i] = choices.get(i).toString();
+        }
         new AlertDialog.Builder(this)
                 .setTitle(R.string.action_change_status)
-                .setItems(R.array.ride_status_choices, (dialog, which) -> {
+                .setItems(labels, (dialog, which) -> {
                     progressBar.setVisibility(View.VISIBLE);
-                    rideManager.updateRideStatus(choices[which], ride,
+                    rideManager.updateRideStatus(choices.get(which), ride,
                             success -> afterAction(success, R.string.msg_status_updated));
                 })
                 .show();
