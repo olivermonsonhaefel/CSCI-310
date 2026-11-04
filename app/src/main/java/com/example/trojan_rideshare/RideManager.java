@@ -8,6 +8,7 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -68,10 +69,11 @@ public class RideManager {
     }
 
     /**
-     * Only the organizer may edit, and only the note: all other posted details stay fixed.
+     * Only the organizer may edit, and only the departure time and note: the ride date and all
+     * other posted details stay fixed.
      * Completed and Cancelled rides can't be edited. Passes the updated ride, or null on failure.
      */
-    public void editRide(Ride ride, String note, Consumer<Ride> callback) {
+    public void editRide(Ride ride, Date departureTime, String note, Consumer<Ride> callback) {
         User user = authManager.getCurrentUser();
         if (user == null) {
             Log.e(TAG, "editRide failed: no user is logged in");
@@ -85,8 +87,11 @@ public class RideManager {
             if (isFinished(current)) {
                 throw abort(FINISHED_RIDE_ERROR);
             }
+            if (!isSameDate(current.getDepartureTime(), departureTime)) {
+                throw abort("The ride date can't be changed");
+            }
             Ride updated = new Ride(current.getRideID(), current.getOrganizer(), current.getTitle(),
-                    current.getOrigin(), current.getDestination(), current.getDepartureTime(),
+                    current.getOrigin(), current.getDestination(), departureTime,
                     current.getMaxRiders(), current.getTotalExpectedCost(), note, current.getRiders(),
                     current.getRideStatus());
             transaction.set(ref, toMap(updated));
@@ -217,6 +222,18 @@ public class RideManager {
             return -1;
         }
         return Double.parseDouble(text);
+    }
+
+    private static boolean isSameDate(Date first, Date second) {
+        if (first == null || second == null) {
+            return false;
+        }
+        Calendar a = Calendar.getInstance();
+        Calendar b = Calendar.getInstance();
+        a.setTime(first);
+        b.setTime(second);
+        return a.get(Calendar.YEAR) == b.get(Calendar.YEAR)
+                && a.get(Calendar.DAY_OF_YEAR) == b.get(Calendar.DAY_OF_YEAR);
     }
 
     /** Completed and Cancelled are final. */

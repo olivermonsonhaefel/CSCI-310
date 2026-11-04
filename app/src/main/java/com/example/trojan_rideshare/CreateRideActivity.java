@@ -108,13 +108,12 @@ public class CreateRideActivity extends AppCompatActivity {
         }
     }
 
-    /** After posting, only the note can change. */
+    /** After posting, only the departure time and note can change. */
     private void lockPostedFields() {
         tilRideTitle.setEnabled(false);
         tilOrigin.setEnabled(false);
         tilDestination.setEnabled(false);
         tilRideDate.setEnabled(false);
-        tilDepartureTime.setEnabled(false);
         tilMaxRiders.setEnabled(false);
         tilExpectedCost.setEnabled(false);
         findViewById(R.id.btnSetOnMap).setVisibility(View.GONE);
@@ -160,10 +159,10 @@ public class CreateRideActivity extends AppCompatActivity {
         tilDepartureTime.setError(null);
     }
 
-    private void saveNote() {
+    private void saveChanges() {
         String note = etNote.getText() != null ? etNote.getText().toString().trim() : "";
         setLoading(true);
-        rideManager.editRide(editingRide, note.isEmpty() ? null : note, updated -> {
+        rideManager.editRide(editingRide, departure.getTime(), note.isEmpty() ? null : note, updated -> {
             setLoading(false);
             if (updated != null) {
                 Toast.makeText(this, R.string.msg_ride_updated, Toast.LENGTH_LONG).show();
@@ -176,7 +175,7 @@ public class CreateRideActivity extends AppCompatActivity {
 
     private void validateAndPost() {
         if (editingRide != null) {
-            saveNote();
+            saveChanges();
             return;
         }
 
