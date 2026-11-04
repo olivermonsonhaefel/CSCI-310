@@ -49,6 +49,19 @@
                 android:textSize="16sp" />
         </com.google.android.material.card.MaterialCardView>
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnViewProfile"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/action_view_profile"
+            android:textColor="@color/usc_cardinal"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/cardDetails"
+            app:strokeColor="@color/usc_cardinal" />
+
         <TextView
             android:id="@+id/tvUnavailable"
             android:layout_width="0dp"
@@ -60,7 +73,7 @@
             android:visibility="gone"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/cardDetails" />
+            app:layout_constraintTop_toBottomOf="@id/btnViewProfile" />
 
         <!-- UCS-2.3.4: optional note to the organizer, at most 250 characters -->
         <com.google.android.material.textfield.TextInputLayout

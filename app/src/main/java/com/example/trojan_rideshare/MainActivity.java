@@ -2,6 +2,8 @@ package com.example.trojan_rideshare;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
 import android.widget.ScrollView;
 
@@ -11,7 +13,17 @@ import com.google.android.material.button.MaterialButton;
 
 public class MainActivity extends AppCompatActivity {
 
+    public static final String EXTRA_ACCOUNT_CREATED = "accountCreated";
+    private static final long ACCOUNT_MESSAGE_MS = 15_000;
+
     private AuthManager authManager;
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private final Runnable hideAccountMessage = () -> {
+        View card = findViewById(R.id.cardInfo);
+        if (card != null) {
+            card.setVisibility(View.GONE);
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -21,6 +33,15 @@ public class MainActivity extends AppCompatActivity {
         ScreenInsets.pad(findViewById(R.id.searchScroll));
 
         authManager = AuthManager.getInstance();
+
+        View cardInfo = findViewById(R.id.cardInfo);
+        if (getIntent().getBooleanExtra(EXTRA_ACCOUNT_CREATED, false)) {
+            cardInfo.setVisibility(View.VISIBLE);
+            handler.postDelayed(hideAccountMessage, ACCOUNT_MESSAGE_MS);
+        }
+
+        MaterialButton btnMyProfile = findViewById(R.id.btnMyProfile);
+        btnMyProfile.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, ProfileActivity.class)));
 
         MaterialButton btnCreateRide = findViewById(R.id.btnCreateRide);
         btnCreateRide.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, CreateRideActivity.class)));
@@ -63,5 +84,11 @@ public class MainActivity extends AppCompatActivity {
                 finish();
             });
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        handler.removeCallbacks(hideAccountMessage);
+        super.onDestroy();
     }
 }

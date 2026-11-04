@@ -1,5 +1,6 @@
 package com.example.trojan_rideshare;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -55,6 +56,7 @@ public class RideDetailActivity extends AppCompatActivity {
         // UCS-2.3.6: leaving the form returns the user to the search where they left off
         tvBack.setOnClickListener(v -> finish());
         btnRequestJoin.setOnClickListener(v -> sendRequest());
+        findViewById(R.id.btnViewProfile).setOnClickListener(v -> openOrganizerProfile());
         etJoinNote.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
@@ -128,6 +130,16 @@ public class RideDetailActivity extends AppCompatActivity {
                 updateButton();
             }
         });
+    }
+
+    private void openOrganizerProfile() {
+        if (ride == null || ride.getOrganizer() == null || ride.getOrganizer().getId() == null
+                || ride.getOrganizer().getId().isEmpty()) {
+            return;
+        }
+        Intent intent = new Intent(this, ProfileActivity.class);
+        intent.putExtra(ProfileActivity.EXTRA_USER_ID, ride.getOrganizer().getId());
+        startActivity(intent);
     }
 
     private String noteText() {
