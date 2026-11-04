@@ -20,6 +20,7 @@ public class JoinRequestManagerTest {
     private static final Date NOW = at(2026, Calendar.NOVEMBER, 1, 9, 0);
     private static final Date LATER = at(2026, Calendar.NOVEMBER, 2, 11, 0);
     private static final Date EARLIER = at(2026, Calendar.OCTOBER, 31, 11, 0);
+    private static final Date ONE_HOUR_AWAY = at(2026, Calendar.NOVEMBER, 1, 10, 0);
 
     // ---- requestJoin checks ----
 
@@ -97,6 +98,20 @@ public class JoinRequestManagerTest {
         assertNull(JoinRequestManager.checkCanRequest(ride, "me", RequestStatus.ACCEPTED.name(), "", NOW));
     }
 
+    @Test
+    public void rideDepartingNowIsRejected() {
+        Ride ride = ride(Status.ON_TIME, NOW, 3, "org");
+        assertEquals(JoinRequestManager.MSG_RIDE_DEPARTED,
+                JoinRequestManager.checkCanRequest(ride, "me", null, "", NOW));
+    }
+
+    // Policy: joining has no three-hour cutoff (only leaving does), so a request one hour before departure is fine
+    @Test
+    public void requestInsideThreeHoursOfDepartureIsAllowed() {
+        Ride ride = ride(Status.ON_TIME, ONE_HOUR_AWAY, 3, "org");
+        assertNull(JoinRequestManager.checkCanRequest(ride, "me", null, "", NOW));
+    }
+
     // ---- note length (UCS-2.3.4) ----
 
     @Test
@@ -120,35 +135,69 @@ public class JoinRequestManagerTest {
     @Test
     public void organizerCanAcceptPendingRequest() {
         Ride ride = ride(Status.ON_TIME, LATER, 3, "org");
-        assertNull(JoinRequestManager.checkCanAccept(ride, "org", RequestStatus.PENDING.name(), "me"));
+        assertNull(JoinRequestManager.checkCanAccept(ride, "org", RequestStatus.PENDING.name(), "me", NOW));
     }
 
     @Test
     public void onlyTheOrganizerCanAccept() {
         Ride ride = ride(Status.ON_TIME, LATER, 3, "org", "other");
         assertEquals("Only the organizer can accept requests",
-                JoinRequestManager.checkCanAccept(ride, "other", RequestStatus.PENDING.name(), "me"));
+                JoinRequestManager.checkCanAccept(ride, "other", RequestStatus.PENDING.name(), "me", NOW));
     }
 
     @Test
     public void answeredRequestCannotBeAcceptedAgain() {
         Ride ride = ride(Status.ON_TIME, LATER, 3, "org");
         assertEquals("Request was already answered",
-                JoinRequestManager.checkCanAccept(ride, "org", RequestStatus.REJECTED.name(), "me"));
+                JoinRequestManager.checkCanAccept(ride, "org", RequestStatus.REJECTED.name(), "me", NOW));
     }
 
     @Test
     public void cannotAcceptIntoFullRide() {
         Ride ride = ride(Status.ON_TIME, LATER, 2, "org", "other");
         assertEquals(JoinRequestManager.MSG_RIDE_FULL,
-                JoinRequestManager.checkCanAccept(ride, "org", RequestStatus.PENDING.name(), "me"));
+                JoinRequestManager.checkCanAccept(ride, "org", RequestStatus.PENDING.name(), "me", NOW));
     }
 
     @Test
     public void cannotAcceptIntoCancelledRide() {
         Ride ride = ride(Status.CANCELLED, LATER, 3, "org");
         assertEquals(JoinRequestManager.MSG_RIDE_UNAVAILABLE,
-                JoinRequestManager.checkCanAccept(ride, "org", RequestStatus.PENDING.name(), "me"));
+                JoinRequestManager.checkCanAccept(ride, "org", RequestStatus.PENDING.name(), "me", NOW));
+    }
+
+    @Test
+    public void cannotAcceptIntoCompletedRide() {
+        Ride ride = ride(Status.COMPLETED, EARLIER, 3, "org");
+        assertEquals(JoinRequestManager.MSG_RIDE_UNAVAILABLE,
+                JoinRequestManager.checkCanAccept(ride, "org", RequestStatus.PENDING.name(), "me", NOW));
+    }
+
+    @Test
+    public void cannotAcceptAfterDeparture() {
+        Ride ride = ride(Status.ON_TIME, EARLIER, 3, "org");
+        assertEquals(JoinRequestManager.MSG_ACCEPT_DEPARTED,
+                JoinRequestManager.checkCanAccept(ride, "org", RequestStatus.PENDING.name(), "me", NOW));
+    }
+
+    @Test
+    public void cannotAcceptAfterDelayedDepartureHasPassed() {
+        Ride ride = ride(Status.DELAYED, EARLIER, 3, "org");
+        assertEquals(JoinRequestManager.MSG_ACCEPT_DEPARTED,
+                JoinRequestManager.checkCanAccept(ride, "org", RequestStatus.PENDING.name(), "me", NOW));
+    }
+
+    @Test
+    public void canAcceptInsideThreeHoursOfDeparture() {
+        Ride ride = ride(Status.ON_TIME, ONE_HOUR_AWAY, 3, "org");
+        assertNull(JoinRequestManager.checkCanAccept(ride, "org", RequestStatus.PENDING.name(), "me", NOW));
+    }
+
+    @Test
+    public void cannotAcceptRiderAlreadyOnTheRide() {
+        Ride ride = ride(Status.ON_TIME, LATER, 3, "org", "me");
+        assertEquals(JoinRequestManager.MSG_ALREADY_JOINED,
+                JoinRequestManager.checkCanAccept(ride, "org", RequestStatus.PENDING.name(), "me", NOW));
     }
 
     @Test

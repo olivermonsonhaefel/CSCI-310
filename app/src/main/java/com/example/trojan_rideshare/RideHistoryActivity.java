@@ -230,7 +230,7 @@ public class RideHistoryActivity extends AppCompatActivity {
                 authManager.getCurrentUser().getId(), (Integer) year, spinnerMonth.getSelectedItemPosition());
         tvMonthlySummary.setText(summary.hasActivity()
                 ? getString(R.string.monthly_summary_result, summary.getCompletedRides(),
-                        money(summary.getAssignedCost()), summary.getOrganizedRides(), summary.getJoinedRides())
+                money(summary.getAssignedCost()), summary.getOrganizedRides(), summary.getJoinedRides())
                 : getString(R.string.monthly_no_activity));
     }
 
@@ -408,6 +408,13 @@ public class RideHistoryActivity extends AppCompatActivity {
         });
         btnLeave.setOnClickListener(v -> {
             dialog.dismiss();
+            // Show why leaving is blocked (Completed, or within 3 hours of departure); leaveRide re-checks it
+            User user = authManager.getCurrentUser();
+            String error = user != null ? RideManager.checkCanLeave(ride, user.getId(), new java.util.Date()) : null;
+            if (error != null) {
+                Toast.makeText(this, error, Toast.LENGTH_LONG).show();
+                return;
+            }
             confirm(R.string.confirm_leave_ride, () -> rideManager.leaveRide(ride,
                     success -> afterAction(success, R.string.msg_left_ride)));
         });

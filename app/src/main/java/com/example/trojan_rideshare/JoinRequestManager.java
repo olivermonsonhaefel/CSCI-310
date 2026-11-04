@@ -20,6 +20,12 @@ import java.util.function.Consumer;
  * Sending and managing join requests (spec Feature 3, use case 2.3). Method names match the class diagram;
  * inputs and Consumer callbacks are added because Firestore calls finish asynchronously, like RideManager.
  * Requests are stored in the "joinRequests" collection.
+ *
+ * Joining cutoff policy: joining does NOT use the three-hour cutoff that leaving uses (RideManager.leaveRide).
+ * The spec only puts the three-hour limit on leaving, and UCS-2.3.2 only rejects a request once "departure time
+ * has passed". So a rider may send a request, and the organizer may accept it, at any time before departure,
+ * including inside the last three hours. At or after departure, both new requests and acceptances are blocked.
+ * "Departure" is the ride's current departureTime, so when an organizer delays a ride the updated time is used.
  */
 @SuppressWarnings({"unused", "RedundantSuppression"})
 public class JoinRequestManager {
@@ -34,6 +40,7 @@ public class JoinRequestManager {
     static final String MSG_RIDE_FULL = "Ride is full. Search for another ride.";
     static final String MSG_RIDE_UNAVAILABLE = "Ride is no longer available. Search for another ride.";
     static final String MSG_RIDE_DEPARTED = "Ride has departed. Search for another ride";
+    static final String MSG_ACCEPT_DEPARTED = "Ride has departed. New riders can't be accepted.";
     static final String MSG_ALREADY_JOINED = "You already joined this ride.";
     static final String MSG_PENDING_EXISTS = "You have a pending request in progress. Wait for a response.";
     static final String MSG_PREVIOUSLY_REJECTED = "You cannot request to join; a previous request was rejected.";
@@ -101,7 +108,10 @@ public class JoinRequestManager {
                 });
     }
 
-    /** Only the organizer may accept. Adds the requester to the ride, which turns Full when it reaches maxRiders. */
+    /**
+     * Only the organizer may accept, and only before departure. Adds the requester to the ride, which turns Full
+     * when it reaches maxRiders. The screen can call checkCanAccept first to show why a request can't be accepted.
+     */
     public void acceptJoinRequest(JoinRequest request, User user, Consumer<Boolean> callback) {
         if (user == null) {
             fail(callback, "No user is logged in");
@@ -113,7 +123,8 @@ public class JoinRequestManager {
                     DocumentSnapshot snapshot = requireRequest(transaction.get(requestRef));
                     Ride ride = RideManager.toRide(transaction.get(rideRef));
                     String requesterId = snapshot.getString("requesterId");
-                    String error = checkCanAccept(ride, user.getId(), snapshot.getString("status"), requesterId);
+                    String error = checkCanAccept(ride, user.getId(), snapshot.getString("status"), requesterId,
+                            new Date());
                     if (error != null) {
                         throw abort(error);
                     }
@@ -243,6 +254,7 @@ public class JoinRequestManager {
         if (Status.CANCELLED.name().equals(status) || Status.COMPLETED.name().equals(status)) {
             return MSG_RIDE_UNAVAILABLE;
         }
+        // Requests stay open until departure itself
         if (ride.getDepartureTime() == null || !ride.getDepartureTime().after(now)) {
             return MSG_RIDE_DEPARTED;
         }
@@ -268,8 +280,8 @@ public class JoinRequestManager {
         return null;
     }
 
-    /** Returns why the organizer can't accept this request, or null if they can. */
-    static String checkCanAccept(Ride ride, String userId, String requestStatus, String requesterId) {
+    /** Returns why the organizer can't accept this request at time now, or null if they can. */
+    static String checkCanAccept(Ride ride, String userId, String requestStatus, String requesterId, Date now) {
         if (!userId.equals(ride.getOrganizer().getId())) {
             return "Only the organizer can accept requests";
         }
@@ -279,6 +291,10 @@ public class JoinRequestManager {
         String status = ride.getRideStatus();
         if (Status.CANCELLED.name().equals(status) || Status.COMPLETED.name().equals(status)) {
             return MSG_RIDE_UNAVAILABLE;
+        }
+        // Same cutoff as sending a request: up to departure
+        if (ride.getDepartureTime() == null || !ride.getDepartureTime().after(now)) {
+            return MSG_ACCEPT_DEPARTED;
         }
         if (ride.getRiders().contains(requesterId)) {
             return MSG_ALREADY_JOINED;

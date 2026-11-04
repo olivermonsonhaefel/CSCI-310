@@ -162,6 +162,16 @@ public class JoinRequestsActivity extends AppCompatActivity {
     }
 
     private void accept(JoinRequest request, MaterialButton btnAccept, MaterialButton btnReject) {
+        // Show the specific reason (departed, full, cancelled, ...) before trying; acceptJoinRequest re-checks it
+        User user = authManager.getCurrentUser();
+        if (user != null) {
+            String error = JoinRequestManager.checkCanAccept(request.getRide(), user.getId(),
+                    request.getStatus(), request.getRequester().getId(), new java.util.Date());
+            if (error != null) {
+                Toast.makeText(this, error, Toast.LENGTH_LONG).show();
+                return;
+            }
+        }
         setEnabled(false, btnAccept, btnReject);
         progressBar.setVisibility(View.VISIBLE);
         joinRequestManager.acceptJoinRequest(request, authManager.getCurrentUser(),
