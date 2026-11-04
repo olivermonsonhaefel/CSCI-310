@@ -8,6 +8,7 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -27,6 +28,7 @@ public class RideManager {
     private static final int MIN_RIDERS = 2;
     private static final int MAX_RIDERS = 6;
     private static final long LEAVE_CUTOFF_MILLIS = 3 * 60 * 60 * 1000L; // spec: leave up to 3 hours before
+    private static final String FINISHED_RIDE_ERROR = "Completed and cancelled rides can't be changed";
 
     private final FirebaseFirestore db;
     private final AuthManager authManager;
@@ -37,13 +39,13 @@ public class RideManager {
     }
 
     public void createRide(String title, Location origin, Location destination, Date departureTime,
-                           int maxRiders, int totalExpectedCost, String note, Consumer<Boolean> callback) {
+                           int maxRiders, double totalExpectedCost, String note, Consumer<Boolean> callback) {
         User user = authManager.getCurrentUser();
         if (user == null) {
             fail(callback, "No user is logged in");
             return;
         }
-        String error = validateDetails(title, departureTime, maxRiders, totalExpectedCost, 1);
+        String error = validateDetails(title, departureTime, maxRiders, totalExpectedCost);
         if (error == null && !departureTime.after(new Date())) {
             error = "Departure must be in the future";
         }
@@ -66,9 +68,12 @@ public class RideManager {
                 });
     }
 
-    /** Only the organizer may edit. Passes the updated ride, or null on failure. */
-    public void editRide(Ride ride, String title, Location origin, Location destination, Date departureTime,
-                         int maxRiders, int totalExpectedCost, String note, Consumer<Ride> callback) {
+    /**
+     * Only the organizer may edit, and only the departure time and note: the ride date and all
+     * other posted details stay fixed.
+     * Completed and Cancelled rides can't be edited. Passes the updated ride, or null on failure.
+     */
+    public void editRide(Ride ride, Date departureTime, String note, Consumer<Ride> callback) {
         User user = authManager.getCurrentUser();
         if (user == null) {
             Log.e(TAG, "editRide failed: no user is logged in");
@@ -79,12 +84,16 @@ public class RideManager {
         db.runTransaction(transaction -> {
             Ride current = toRide(transaction.get(ref));
             requireOrganizer(current, user);
-            String error = validateDetails(title, departureTime, maxRiders, totalExpectedCost, current.getNumOfRiders());
-            if (error != null) {
-                throw abort(error);
+            if (isFinished(current)) {
+                throw abort(FINISHED_RIDE_ERROR);
             }
-            Ride updated = new Ride(current.getRideID(), current.getOrganizer(), title, origin, destination,
-                    departureTime, maxRiders, totalExpectedCost, note, current.getRiders(), current.getRideStatus());
+            if (!isSameDate(current.getDepartureTime(), departureTime)) {
+                throw abort("The ride date can't be changed");
+            }
+            Ride updated = new Ride(current.getRideID(), current.getOrganizer(), current.getTitle(),
+                    current.getOrigin(), current.getDestination(), departureTime,
+                    current.getMaxRiders(), current.getTotalExpectedCost(), note, current.getRiders(),
+                    current.getRideStatus());
             transaction.set(ref, toMap(updated));
             return updated;
         }).addOnSuccessListener(callback::accept)
@@ -104,6 +113,7 @@ public class RideManager {
         db.runTransaction(transaction -> {
             Ride current = toRide(transaction.get(ref));
             requireOrganizer(current, user);
+            requireAllowedChange(current, Status.CANCELLED);
             transaction.set(ref, toMap(rebuild(current, current.getOrganizer(), current.getRiders(), Status.CANCELLED)));
             return null;
         }).addOnSuccessListener(result -> callback.accept(true))
@@ -113,7 +123,10 @@ public class RideManager {
                 });
     }
 
-    /** Only the organizer may change the activity status. Completed sets capacity to N/A. */
+    /**
+     * Only the organizer may change the activity status. Completed is only allowed once the
+     * departure time has passed, and Completed and Cancelled can't be undone.
+     */
     public void updateRideStatus(Status status, Ride ride, Consumer<Boolean> callback) {
         User user = authManager.getCurrentUser();
         if (status == Status.CANCELLED) {
@@ -128,6 +141,7 @@ public class RideManager {
         db.runTransaction(transaction -> {
             Ride current = toRide(transaction.get(ref));
             requireOrganizer(current, user);
+            requireAllowedChange(current, status);
             transaction.set(ref, toMap(rebuild(current, current.getOrganizer(), current.getRiders(), status)));
             return null;
         }).addOnSuccessListener(result -> callback.accept(true))
@@ -186,8 +200,7 @@ public class RideManager {
     }
 
     /** Returns an error message, or null if the ride details are valid. */
-    private static String validateDetails(String title, Date departureTime, int maxRiders,
-                                          int totalExpectedCost, int numOfRiders) {
+    private static String validateDetails(String title, Date departureTime, int maxRiders, double totalExpectedCost) {
         if (title == null || title.trim().isEmpty()) {
             return "Title is required";
         }
@@ -197,13 +210,54 @@ public class RideManager {
         if (maxRiders < MIN_RIDERS || maxRiders > MAX_RIDERS) {
             return "Riders must be between " + MIN_RIDERS + " and " + MAX_RIDERS;
         }
-        if (maxRiders < numOfRiders) {
-            return "Ride already has " + numOfRiders + " riders";
-        }
         if (totalExpectedCost < 0) {
             return "Expected cost can't be negative";
         }
         return null;
+    }
+
+    /** Reads a dollar amount with up to 2 decimals. Returns -1 when the text isn't one. */
+    static double parseCost(String text) {
+        if (text == null || !text.matches("\\d+(\\.\\d{0,2})?|\\.\\d{1,2}")) {
+            return -1;
+        }
+        return Double.parseDouble(text);
+    }
+
+    private static boolean isSameDate(Date first, Date second) {
+        if (first == null || second == null) {
+            return false;
+        }
+        Calendar a = Calendar.getInstance();
+        Calendar b = Calendar.getInstance();
+        a.setTime(first);
+        b.setTime(second);
+        return a.get(Calendar.YEAR) == b.get(Calendar.YEAR)
+                && a.get(Calendar.DAY_OF_YEAR) == b.get(Calendar.DAY_OF_YEAR);
+    }
+
+    /** Completed and Cancelled are final. */
+    static boolean isFinished(Ride ride) {
+        return Status.COMPLETED.name().equals(ride.getRideStatus())
+                || Status.CANCELLED.name().equals(ride.getRideStatus());
+    }
+
+    /** Returns an error message, or null if the ride may move to the given status at this time. */
+    static String checkStatusChange(Ride ride, Status status, Date now) {
+        if (isFinished(ride)) {
+            return FINISHED_RIDE_ERROR;
+        }
+        if (status == Status.COMPLETED && now.before(ride.getDepartureTime())) {
+            return "Rides can only be completed after departure";
+        }
+        return null;
+    }
+
+    private static void requireAllowedChange(Ride ride, Status status) throws FirebaseFirestoreException {
+        String error = checkStatusChange(ride, status, new Date());
+        if (error != null) {
+            throw abort(error);
+        }
     }
 
     private static void requireOrganizer(Ride ride, User user) throws FirebaseFirestoreException {
@@ -291,7 +345,7 @@ public class RideManager {
                 toLocation(snapshot.get("destination")),
                 snapshot.getDate("departureTime"),
                 getInt(snapshot, "maxRiders"),
-                getInt(snapshot, "totalExpectedCost"),
+                getDouble(snapshot, "totalExpectedCost"),
                 snapshot.getString("note"),
                 riders,
                 status);
@@ -354,6 +408,11 @@ public class RideManager {
                 snapshot.getString("nickname"),
                 getInt(snapshot, "graduationYear"),
                 getInt(snapshot, "uscId"));
+    }
+
+    private static double getDouble(DocumentSnapshot snapshot, String field) {
+        Double value = snapshot.getDouble(field);
+        return value != null ? value : 0;
     }
 
     private static int getInt(DocumentSnapshot snapshot, String field) {

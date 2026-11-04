@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -18,8 +19,11 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
+import java.text.DateFormatSymbols;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -34,10 +38,10 @@ public class RideHistoryActivity extends AppCompatActivity {
 
     private TextInputLayout tilOrigin, tilDestination, tilRadius;
     private TextInputEditText etOrigin, etDestination, etRadius;
-    private Spinner spinnerStatus, spinnerParticipant, spinnerSort;
+    private Spinner spinnerStatus, spinnerParticipant, spinnerSort, spinnerMonth, spinnerYear;
     private MaterialButton btnSearch;
     private ProgressBar progressBar, searchProgressBar;
-    private TextView tvUpcomingMessage, tvHistoryMessage;
+    private TextView tvUpcomingMessage, tvHistoryMessage, tvMonthlySummary;
     private LinearLayout upcomingContainer, historyContainer;
 
     private final MapboxGeocoder geocoder = new MapboxGeocoder();
@@ -50,6 +54,8 @@ public class RideHistoryActivity extends AppCompatActivity {
     private List<Ride> pastRides = new ArrayList<>();
     private final Map<String, Expense> expensesById = new HashMap<>();
     private final List<User> participants = new ArrayList<>();
+    private List<Ride> summaryRides; // null until loaded, or if loading failed
+    private Map<String, Double> organizerShares = new HashMap<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -79,6 +85,9 @@ public class RideHistoryActivity extends AppCompatActivity {
         spinnerStatus = findViewById(R.id.spinnerStatus);
         spinnerParticipant = findViewById(R.id.spinnerParticipant);
         spinnerSort = findViewById(R.id.spinnerSort);
+        spinnerMonth = findViewById(R.id.spinnerMonth);
+        spinnerYear = findViewById(R.id.spinnerYear);
+        tvMonthlySummary = findViewById(R.id.tvMonthlySummary);
         btnSearch = findViewById(R.id.btnSearch);
         progressBar = findViewById(R.id.progressBar);
         searchProgressBar = findViewById(R.id.searchProgressBar);
@@ -92,6 +101,7 @@ public class RideHistoryActivity extends AppCompatActivity {
         spinnerStatus.setAdapter(adapterFromArray(R.array.history_status_options));
         spinnerSort.setAdapter(adapterFromArray(R.array.history_sort_options));
         showParticipants();
+        setUpMonthlySummary();
 
         btnSearch.setOnClickListener(v -> validateAndSearch());
         tvBack.setOnClickListener(v -> finish());
@@ -130,6 +140,7 @@ public class RideHistoryActivity extends AppCompatActivity {
                 pastRides.addAll(searchManager.filterByStatus(rides, Status.CANCELLED));
                 showRides(searchManager.sortByLatest(pastRides), historyContainer, tvHistoryMessage,
                         getString(R.string.no_past_rides), false);
+                loadMonthlySummary(rides, expenses != null);
             });
         });
         historyManager.getParticipants(users -> {
@@ -139,6 +150,88 @@ public class RideHistoryActivity extends AppCompatActivity {
             }
             showParticipants();
         });
+    }
+
+    private void setUpMonthlySummary() {
+        List<String> months = Arrays.asList(new DateFormatSymbols(Locale.US).getMonths()).subList(0, 12);
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, months);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerMonth.setAdapter(adapter);
+        spinnerMonth.setSelection(Calendar.getInstance().get(Calendar.MONTH));
+        showYears(new ArrayList<>());
+
+        AdapterView.OnItemSelectedListener listener = new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                showMonthlySummary();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+            }
+        };
+        spinnerMonth.setOnItemSelectedListener(listener);
+        spinnerYear.setOnItemSelectedListener(listener);
+    }
+
+    /** Offers every year with a ride plus the years around now, keeping the current selection. */
+    private void showYears(List<Ride> rides) {
+        int currentYear = Calendar.getInstance().get(Calendar.YEAR);
+        Object selected = spinnerYear.getSelectedItem();
+        int selectedYear = selected != null ? (Integer) selected : currentYear;
+        int first = Math.min(currentYear - 1, selectedYear);
+        int last = Math.max(currentYear + 1, selectedYear);
+        Calendar scheduled = Calendar.getInstance();
+        for (Ride ride : rides) {
+            if (ride.getDepartureTime() != null) {
+                scheduled.setTime(ride.getDepartureTime());
+                first = Math.min(first, scheduled.get(Calendar.YEAR));
+                last = Math.max(last, scheduled.get(Calendar.YEAR));
+            }
+        }
+        List<Integer> years = new ArrayList<>();
+        for (int year = first; year <= last; year++) {
+            years.add(year);
+        }
+        ArrayAdapter<Integer> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, years);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerYear.setAdapter(adapter);
+        spinnerYear.setSelection(years.indexOf(selectedYear));
+    }
+
+    private void loadMonthlySummary(List<Ride> rides, boolean expensesLoaded) {
+        if (!expensesLoaded) {
+            showSummaryLoadError();
+            return;
+        }
+        historyManager.getOrganizerShares(shares -> {
+            if (shares == null) {
+                showSummaryLoadError();
+                return;
+            }
+            organizerShares = shares;
+            summaryRides = rides;
+            showYears(rides);
+            showMonthlySummary();
+        });
+    }
+
+    private void showSummaryLoadError() {
+        summaryRides = null;
+        tvMonthlySummary.setText(R.string.error_load_rides);
+    }
+
+    private void showMonthlySummary() {
+        Object year = spinnerYear.getSelectedItem();
+        if (summaryRides == null || year == null) {
+            return;
+        }
+        MonthlySummary summary = MonthlySummary.of(summaryRides, expensesById, organizerShares,
+                authManager.getCurrentUser().getId(), (Integer) year, spinnerMonth.getSelectedItemPosition());
+        tvMonthlySummary.setText(summary.hasActivity()
+                ? getString(R.string.monthly_summary_result, summary.getCompletedRides(),
+                        money(summary.getAssignedCost()), summary.getOrganizedRides(), summary.getJoinedRides())
+                : getString(R.string.monthly_no_activity));
     }
 
     private void showParticipants() {
@@ -235,8 +328,8 @@ public class RideHistoryActivity extends AppCompatActivity {
                 tvStatus.setText(getString(R.string.label_status_riders, status,
                         CapacityStatus.valueOf(ride.getCapacityStatus()).toString(),
                         ride.getNumOfRiders(), ride.getMaxRiders()));
-                String perPerson = String.format(Locale.US, "%.2f", ride.getTotalExpectedCost() / (double) ride.getMaxRiders());
-                tvCost.setText(getString(R.string.label_expected_cost, ride.getTotalExpectedCost(), perPerson));
+                String perPerson = String.format(Locale.US, "%.2f", ride.getTotalExpectedCost() / ride.getMaxRiders());
+                tvCost.setText(getString(R.string.label_expected_cost, money(ride.getTotalExpectedCost()), perPerson));
             } else {
                 tvStatus.setText(getString(R.string.label_history_status, status, ride.getNumOfRiders()));
                 if (Status.COMPLETED.name().equals(ride.getRideStatus())) {
@@ -291,7 +384,7 @@ public class RideHistoryActivity extends AppCompatActivity {
         MaterialButton btnCancel = view.findViewById(R.id.btnCancelRide);
         MaterialButton btnLeave = view.findViewById(R.id.btnLeaveRide);
 
-        int organizerOnly = isOrganizer ? View.VISIBLE : View.GONE;
+        int organizerOnly = isOrganizer && !RideManager.isFinished(ride) ? View.VISIBLE : View.GONE;
         btnEdit.setVisibility(organizerOnly);
         btnStatus.setVisibility(organizerOnly);
         btnCancel.setVisibility(organizerOnly);
@@ -322,12 +415,21 @@ public class RideHistoryActivity extends AppCompatActivity {
     }
 
     private void pickStatus(Ride ride) {
-        Status[] choices = {Status.ON_TIME, Status.DELAYED, Status.COMPLETED};
+        List<Status> choices = new ArrayList<>();
+        for (Status status : new Status[]{Status.ON_TIME, Status.DELAYED, Status.COMPLETED}) {
+            if (RideManager.checkStatusChange(ride, status, new java.util.Date()) == null) {
+                choices.add(status);
+            }
+        }
+        String[] labels = new String[choices.size()];
+        for (int i = 0; i < labels.length; i++) {
+            labels[i] = choices.get(i).toString();
+        }
         new AlertDialog.Builder(this)
                 .setTitle(R.string.action_change_status)
-                .setItems(R.array.ride_status_choices, (dialog, which) -> {
+                .setItems(labels, (dialog, which) -> {
                     progressBar.setVisibility(View.VISIBLE);
-                    rideManager.updateRideStatus(choices[which], ride,
+                    rideManager.updateRideStatus(choices.get(which), ride,
                             success -> afterAction(success, R.string.msg_status_updated));
                 })
                 .show();

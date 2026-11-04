@@ -11,8 +11,10 @@ import com.google.firebase.firestore.FirebaseFirestoreException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -54,6 +56,33 @@ public class UserRideHistoryManager {
                 })
                 .addOnFailureListener(e -> {
                     Log.e(TAG, "getHistory failed", e);
+                    callback.accept(null);
+                });
+    }
+
+    /** Ride id -> the logged-in organizer's own share of that ride's cost, for rides with a split. */
+    public void getOrganizerShares(Consumer<Map<String, Double>> callback) {
+        User user = authManager.getCurrentUser();
+        if (user == null) {
+            Log.e(TAG, "getOrganizerShares failed: no user is logged in");
+            callback.accept(null);
+            return;
+        }
+        db.collection(RIDES)
+                .whereEqualTo("organizer.id", user.getId())
+                .get()
+                .addOnSuccessListener(snapshot -> {
+                    Map<String, Double> shares = new HashMap<>();
+                    for (DocumentSnapshot document : snapshot.getDocuments()) {
+                        Double share = document.getDouble("organizerShare");
+                        if (share != null) {
+                            shares.put(document.getId(), share);
+                        }
+                    }
+                    callback.accept(shares);
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "getOrganizerShares failed", e);
                     callback.accept(null);
                 });
     }

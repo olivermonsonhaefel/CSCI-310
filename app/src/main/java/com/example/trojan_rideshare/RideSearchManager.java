@@ -269,7 +269,7 @@ public class RideSearchManager {
 
     /** Class diagram and search sequence. Not listed in UCS-2.2.9. Lower expected cost first. */
     public List<Ride> sortByCost(List<Ride> rides) {
-        return sorted(rides, Comparator.comparingInt(Ride::getTotalExpectedCost)
+        return sorted(rides, Comparator.comparingDouble(Ride::getTotalExpectedCost)
                 .thenComparingDouble(this::proximity)
                 .thenComparing(this::effectiveDeparture, Comparator.nullsLast(Date::compareTo)));
     }
