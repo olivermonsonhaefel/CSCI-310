@@ -81,6 +81,11 @@
     <string name="label_owed_to_you">Riders owe you $%1$s · %2$d of %3$d paid</string>
     <string name="status_paid">Paid</string>
     <string name="status_not_paid">Not paid</string>
+    <string name="label_monthly_summary">Monthly Summary</string>
+    <string name="prompt_month">Month</string>
+    <string name="prompt_year">Year</string>
+    <string name="monthly_no_activity">No activity! Please select another month.</string>
+    <string name="monthly_summary_result">Completed rides: %1$d\nAssigned costs (paid and unpaid): $%2$s\nRides organized: %3$d\nRides joined: %4$d</string>
     <string name="action_edit_ride">Edit Ride</string>
     <string name="action_change_status">Change Status</string>
     <string name="action_cancel_ride">Cancel Ride</string>
