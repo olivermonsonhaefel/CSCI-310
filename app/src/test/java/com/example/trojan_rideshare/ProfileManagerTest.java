@@ -30,6 +30,13 @@ public class ProfileManagerTest {
     }
 
     @Test
+    public void participantIdsIncludeOrganizerAndRidersOnce() {
+        Ride ride = ride(user("org"), List.of("org", "rider", "rider", ""));
+        assertEquals(List.of("org", "rider"), ProfileManager.participantIds(ride));
+        assertTrue(ProfileManager.participantIds(null).isEmpty());
+    }
+
+    @Test
     public void ignoresMissingUser() {
         Ride ride = ride(user("org"), Collections.singletonList("org"));
         assertFalse(ProfileManager.includesUser(ride, null));

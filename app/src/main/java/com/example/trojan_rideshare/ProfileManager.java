@@ -130,6 +130,76 @@ public class ProfileManager {
                 });
     }
 
+    /**
+     * People on this ride who marked it public. Each name on the ride page opens that profile.
+     * A failed read for one person is skipped so the others still show.
+     */
+    public void loadUsersWhoShared(Ride ride, Consumer<List<User>> callback) {
+        List<String> ids = participantIds(ride);
+        if (ride == null || ride.getRideID() == null || ride.getRideID().isEmpty() || ids.isEmpty()) {
+            callback.accept(new ArrayList<>());
+            return;
+        }
+        List<Task<DocumentSnapshot>> reads = new ArrayList<>();
+        for (String id : ids) {
+            reads.add(db.collection(USERS).document(id).collection(PUBLIC_RIDES).document(ride.getRideID()).get());
+        }
+        Tasks.whenAllComplete(reads).addOnSuccessListener(tasks -> {
+            List<String> sharedIds = new ArrayList<>();
+            for (int i = 0; i < tasks.size(); i++) {
+                Task<?> task = tasks.get(i);
+                if (!task.isSuccessful() || !(task.getResult() instanceof DocumentSnapshot)) {
+                    continue;
+                }
+                if (((DocumentSnapshot) task.getResult()).exists()) {
+                    sharedIds.add(ids.get(i));
+                }
+            }
+            if (sharedIds.isEmpty()) {
+                callback.accept(new ArrayList<>());
+                return;
+            }
+            List<Task<DocumentSnapshot>> userReads = new ArrayList<>();
+            for (String id : sharedIds) {
+                userReads.add(db.collection(USERS).document(id).get());
+            }
+            Tasks.whenAllComplete(userReads).addOnSuccessListener(userTasks -> {
+                List<User> people = new ArrayList<>();
+                for (Task<?> task : userTasks) {
+                    if (!task.isSuccessful() || !(task.getResult() instanceof DocumentSnapshot)) {
+                        continue;
+                    }
+                    DocumentSnapshot snapshot = (DocumentSnapshot) task.getResult();
+                    if (snapshot.exists()) {
+                        people.add(toUser(snapshot));
+                    }
+                }
+                callback.accept(people);
+            });
+        });
+    }
+
+    /** Organizer plus riders, with duplicates and blank ids removed. */
+    static List<String> participantIds(Ride ride) {
+        List<String> ids = new ArrayList<>();
+        if (ride == null) {
+            return ids;
+        }
+        if (ride.getOrganizer() != null) {
+            addId(ids, ride.getOrganizer().getId());
+        }
+        for (String riderId : ride.getRiders()) {
+            addId(ids, riderId);
+        }
+        return ids;
+    }
+
+    private static void addId(List<String> ids, String id) {
+        if (id != null && !id.isEmpty() && !ids.contains(id)) {
+            ids.add(id);
+        }
+    }
+
     /** Rides this person marked public, and only if they were actually on the ride. */
     public void loadPublicRides(String userId, Consumer<List<Ride>> callback) {
         loadPublicRideIds(userId, ids -> {

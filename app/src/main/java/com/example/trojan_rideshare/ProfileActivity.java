@@ -189,9 +189,9 @@ public class ProfileActivity extends AppCompatActivity {
 
         fillSection(upcomingContainer, tvUpcomingMessage, upcoming, publicIds, true,
                 ownProfile ? R.string.profile_no_upcoming : R.string.profile_no_public_upcoming);
-        fillSection(completedContainer, tvCompletedMessage, completed, publicIds, false,
+        fillSection(completedContainer, tvCompletedMessage, completed, publicIds, true,
                 ownProfile ? R.string.profile_no_completed : R.string.profile_no_public_completed);
-        fillSection(cancelledContainer, tvCancelledMessage, cancelled, null, false,
+        fillSection(cancelledContainer, tvCancelledMessage, cancelled, null, true,
                 ownProfile ? R.string.profile_no_cancelled : R.string.profile_no_public_cancelled);
     }
 
