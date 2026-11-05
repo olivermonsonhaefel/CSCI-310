@@ -228,8 +228,8 @@ public class RideManager {
         if (maxRiders < MIN_RIDERS || maxRiders > MAX_RIDERS) {
             return "Riders must be between " + MIN_RIDERS + " and " + MAX_RIDERS;
         }
-        if (totalExpectedCost < 0) {
-            return "Expected cost can't be negative";
+        if (totalExpectedCost <= 0) {
+            return "Expected cost must be greater than 0";
         }
         return null;
     }
