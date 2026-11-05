@@ -2,6 +2,10 @@ package com.example.trojan_rideshare;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.view.View;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -20,6 +24,13 @@ public class MainActivity extends AppCompatActivity {
 
     private TextView tvFullName, tvGradYear;
     private TextInputEditText etEmailReadonly, etUscIdReadonly, etNickname;
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private final Runnable hideAccountMessage = () -> {
+        View card = findViewById(R.id.cardInfo);
+        if (card != null) {
+            card.setVisibility(View.GONE);
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,23 +80,29 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        MaterialButton btnViewBalance = findViewById(R.id.btnViewBalance);
+        btnViewBalance.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, BalanceActivity.class)));
+
         tvFullName = findViewById(R.id.tvFullName);
         tvGradYear = findViewById(R.id.tvGradYear);
         etEmailReadonly = findViewById(R.id.etEmailReadonly);
         etUscIdReadonly = findViewById(R.id.etUscIdReadonly);
         etNickname = findViewById(R.id.etNickname);
         MaterialButton btnUpdateNickname = findViewById(R.id.btnUpdateNickname);
-        MaterialButton btnLogout = findViewById(R.id.btnLogout);
 
         populateUserData();
 
         btnUpdateNickname.setOnClickListener(v -> updateNickname());
 
-        btnLogout.setOnClickListener(v -> {
-            authManager.logoutUser("", "", "");
-            startActivity(new Intent(MainActivity.this, LoginActivity.class));
-            finish();
-        });
+        MaterialButton btnLogout = findViewById(R.id.btnLogout);
+        if (btnLogout != null) {
+            btnLogout.setOnClickListener(v -> {
+                authManager.logoutUser("", "", "");
+                Intent intent = new Intent(MainActivity.this, LoginActivity.class);
+                startActivity(intent);
+                finish();
+            });
+        }
     }
 
     private void populateUserData() {
