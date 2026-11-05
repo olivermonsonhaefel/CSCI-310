@@ -22,7 +22,6 @@ import java.util.Set;
 
 /**
  * One card for the signed-in user and for any other user.
- * The payment flag area is left for the teammate who owns that feature.
  */
 public class ProfileActivity extends AppCompatActivity {
 
@@ -30,6 +29,7 @@ public class ProfileActivity extends AppCompatActivity {
 
     private final ProfileManager profiles = new ProfileManager();
 
+    private TextView tvPaymentFlag;
     private TextView tvProfileName;
     private TextView tvProfileNickname;
     private TextView tvProfileEmail;
@@ -64,6 +64,7 @@ public class ProfileActivity extends AppCompatActivity {
         userId = requested == null || requested.isEmpty() ? current.getId() : requested;
         ownProfile = userId.equals(current.getId());
 
+        tvPaymentFlag = findViewById(R.id.tvPaymentFlag);
         tvProfileName = findViewById(R.id.tvProfileName);
         tvProfileNickname = findViewById(R.id.tvProfileNickname);
         tvProfileEmail = findViewById(R.id.tvProfileEmail);
@@ -95,6 +96,9 @@ public class ProfileActivity extends AppCompatActivity {
 
     private void loadProfile() {
         setLoading(true);
+        profiles.loadFlagCount(userId, count -> tvPaymentFlag.setText(count != null
+                ? getString(R.string.profile_flag_count, count)
+                : getString(R.string.profile_flag_error)));
         profiles.loadUser(userId, user -> {
             if (user == null) {
                 setLoading(false);

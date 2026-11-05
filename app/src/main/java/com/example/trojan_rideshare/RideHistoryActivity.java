@@ -210,6 +210,8 @@ public class RideHistoryActivity extends AppCompatActivity {
                 return;
             }
             organizerShares = shares;
+            showRides(searchManager.sortByLatest(pastRides), historyContainer, tvHistoryMessage,
+                    getString(R.string.no_past_rides), false);
             summaryRides = rides;
             showYears(rides);
             showMonthlySummary();
@@ -366,10 +368,14 @@ public class RideHistoryActivity extends AppCompatActivity {
                 paid++;
             }
         }
+        Double ownShare = organizerShares.get(ride.getRideID());
+        String ownCost = ownShare != null
+                ? getString(R.string.cost_split_organizer_cost, money(ownShare)) : "";
         if (split == 0) {
-            return getString(R.string.label_cost_not_split);
+            return ownShare != null ? ownCost : getString(R.string.label_cost_not_split);
         }
-        return getString(R.string.label_owed_to_you, money(owed), paid, split);
+        String reimbursements = getString(R.string.label_owed_to_you, money(owed), paid, split);
+        return ownShare != null ? ownCost + "\n" + reimbursements : reimbursements;
     }
 
     private static String money(double amount) {
