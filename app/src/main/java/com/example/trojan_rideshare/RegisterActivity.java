@@ -117,16 +117,25 @@ public class RegisterActivity extends AppCompatActivity {
 
         btnRegister.setEnabled(false);
 
-        authManager.registerUser(fullName, email, uscId, gradYear, password, nickname, success -> {
+        authManager.registerUserWithStatus(fullName, email, uscId, gradYear, password, nickname, status -> {
             btnRegister.setEnabled(true);
-            if (success) {
+            if ("SUCCESS".equals(status)) {
                 Toast.makeText(this, "Account created successfully!", Toast.LENGTH_LONG).show();
                 Intent intent = new Intent(RegisterActivity.this, MainActivity.class);
                 intent.putExtra(MainActivity.EXTRA_ACCOUNT_CREATED, true);
                 startActivity(intent);
                 finish();
+            } else if ("USC_ID_TAKEN".equals(status)) {
+                tilUscId.setError("This USC ID is already registered to another account");
+                Toast.makeText(this, "Registration failed: USC ID is already registered.", Toast.LENGTH_LONG).show();
+            } else if ("EMAIL_TAKEN".equals(status)) {
+                tilEmail.setError("This email address is already registered");
+                Toast.makeText(this, "Registration failed: Email is already in use.", Toast.LENGTH_LONG).show();
+            } else if ("WEAK_PASSWORD".equals(status)) {
+                tilPassword.setError("Password is too weak. Must be at least 6 characters");
+                Toast.makeText(this, "Registration failed: Password is too weak.", Toast.LENGTH_LONG).show();
             } else {
-                Toast.makeText(this, "Registration failed. Email may already be in use.", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "Registration failed: " + status, Toast.LENGTH_LONG).show();
             }
         });
     }

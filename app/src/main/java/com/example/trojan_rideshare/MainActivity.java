@@ -122,16 +122,68 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void updateNickname() {
-        String newNickname = etNickname.getText() != null ? etNickname.getText().toString().trim() : "";
+        if (etNickname != null) {
+            etNickname.setError(null);
+        }
+        String newNickname = (etNickname != null && etNickname.getText() != null)
+                ? etNickname.getText().toString().trim()
+                : "";
+
         if (newNickname.isEmpty()) {
-            etNickname.setError("Nickname cannot be empty (defaults to full name if omitted)");
+            if (etNickname != null) {
+                etNickname.setError("Nickname cannot be empty (defaults to full name if omitted)");
+            }
             return;
+        }
+
+        MaterialButton btnUpdateNickname = findViewById(R.id.btnUpdateNickname);
+        if (btnUpdateNickname != null) {
+            btnUpdateNickname.setEnabled(false);
+            btnUpdateNickname.setText("Updating...");
         }
 
         if (currentUser != null) {
             currentUser.updateNickname(newNickname);
         }
-        Toast.makeText(this, "Displayed nickname updated to: " + newNickname, Toast.LENGTH_LONG).show();
+
+        if (authManager != null) {
+            authManager.updateNickname(newNickname, success -> {
+                currentUser = authManager.getCurrentUser();
+                if (currentUser != null && etNickname != null) {
+                    etNickname.setText(currentUser.getNickname());
+                }
+                if (btnUpdateNickname != null) {
+                    btnUpdateNickname.setText("Updated!");
+                    handler.postDelayed(() -> {
+                        btnUpdateNickname.setEnabled(true);
+                        btnUpdateNickname.setText(R.string.action_update_nickname);
+                    }, 1500);
+                }
+                Toast.makeText(this, "Displayed nickname updated to: " + newNickname, Toast.LENGTH_LONG).show();
+            });
+        } else {
+            if (etNickname != null) {
+                etNickname.setText(newNickname);
+            }
+            if (btnUpdateNickname != null) {
+                btnUpdateNickname.setText("Updated!");
+                handler.postDelayed(() -> {
+                    btnUpdateNickname.setEnabled(true);
+                    btnUpdateNickname.setText(R.string.action_update_nickname);
+                }, 1500);
+            }
+            Toast.makeText(this, "Displayed nickname updated to: " + newNickname, Toast.LENGTH_LONG).show();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (authManager == null) {
+            authManager = AuthManager.getInstance();
+        }
+        currentUser = authManager.getCurrentUser();
+        populateUserData();
     }
 
     @Override
