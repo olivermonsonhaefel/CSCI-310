@@ -40,7 +40,7 @@
                 android:orientation="vertical"
                 android:padding="20dp">
 
-                <!-- Reserved for the unpaid flag. Another feature fills tvPaymentFlag. -->
+                <!-- ProfileActivity fills tvPaymentFlag with the number of flagged unpaid expenses. -->
                 <LinearLayout
                     android:id="@+id/paymentFlagSlot"
                     android:layout_width="match_parent"
@@ -63,7 +63,6 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="@string/profile_flag_placeholder"
                         android:textColor="@color/black"
                         android:textSize="16sp" />
                 </LinearLayout>

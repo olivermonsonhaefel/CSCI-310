@@ -27,6 +27,7 @@ public class ProfileManager {
     private static final String TAG = "ProfileManager";
     private static final String USERS = "users";
     private static final String RIDES = "rides";
+    private static final String RIDER_FLAGS = "riderFlags";
     static final String PUBLIC_RIDES = "publicRides";
 
     private final FirebaseFirestore db;
@@ -50,6 +51,18 @@ public class ProfileManager {
                 })
                 .addOnFailureListener(e -> {
                     Log.e(TAG, "loadUser failed", e);
+                    callback.accept(null);
+                });
+    }
+
+    /** How many of this person's unpaid expenses are flagged. Passes null when the read fails. */
+    public void loadFlagCount(String userId, Consumer<Integer> callback) {
+        db.collection(RIDER_FLAGS)
+                .whereEqualTo("flaggedUser", db.collection(USERS).document(userId))
+                .get()
+                .addOnSuccessListener(flags -> callback.accept(flags.size()))
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "loadFlagCount failed", e);
                     callback.accept(null);
                 });
     }

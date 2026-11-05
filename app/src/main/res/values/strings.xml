@@ -64,7 +64,8 @@
     <string name="profile_title">Profile</string>
     <string name="profile_title_own">My Profile</string>
     <string name="profile_flag_label">Payment flag</string>
-    <string name="profile_flag_placeholder">Placeholder</string>
+    <string name="profile_flag_count">Flagged unpaid expenses: %1$d</string>
+    <string name="profile_flag_error">Could not load payment flags.</string>
     <string name="profile_rides_heading">Rides</string>
     <string name="profile_completed_heading">Completed</string>
     <string name="profile_cancelled_heading">Cancelled</string>
