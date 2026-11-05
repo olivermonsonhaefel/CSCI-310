@@ -1,15 +1,20 @@
 package com.example.trojan_rideshare;
 
 import android.content.Intent;
+import android.graphics.Paint;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+
+import java.util.List;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
@@ -30,8 +35,12 @@ public class RideDetailActivity extends AppCompatActivity {
     private TextInputEditText etJoinNote;
     private MaterialButton btnRequestJoin;
     private ProgressBar progressBar;
+    private TextView tvSharedHeading;
+    private TextView tvSharedEmpty;
+    private LinearLayout sharedProfiles;
     private RideSearchManager searchManager;
     private JoinRequestManager joinRequestManager;
+    private final ProfileManager profiles = new ProfileManager();
 
     private Ride ride;
     private boolean cancelled;
@@ -51,12 +60,14 @@ public class RideDetailActivity extends AppCompatActivity {
         etJoinNote = findViewById(R.id.etJoinNote);
         btnRequestJoin = findViewById(R.id.btnRequestJoin);
         progressBar = findViewById(R.id.progressBar);
+        tvSharedHeading = findViewById(R.id.tvSharedHeading);
+        tvSharedEmpty = findViewById(R.id.tvSharedEmpty);
+        sharedProfiles = findViewById(R.id.sharedProfiles);
         TextView tvBack = findViewById(R.id.tvBack);
 
         // UCS-2.3.6: leaving the form returns the user to the search where they left off
         tvBack.setOnClickListener(v -> finish());
         btnRequestJoin.setOnClickListener(v -> sendRequest());
-        findViewById(R.id.btnViewProfile).setOnClickListener(v -> openOrganizerProfile());
         etJoinNote.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
@@ -93,8 +104,52 @@ public class RideDetailActivity extends AppCompatActivity {
         ride = loaded;
         tvDetails.setText(ride.getDisplayInfo());
         cancelled = Status.CANCELLED.name().equals(ride.getRideStatus());
+        boolean closed = cancelled || Status.COMPLETED.name().equals(ride.getRideStatus());
         tvUnavailable.setVisibility(cancelled ? View.VISIBLE : View.GONE);
+        tilJoinNote.setVisibility(closed ? View.GONE : View.VISIBLE);
+        btnRequestJoin.setVisibility(closed ? View.GONE : View.VISIBLE);
         updateButton();
+        profiles.loadUsersWhoShared(ride, this::showSharedProfiles);
+    }
+
+    private void showSharedProfiles(List<User> people) {
+        sharedProfiles.removeAllViews();
+        tvSharedHeading.setVisibility(View.VISIBLE);
+        if (people == null || people.isEmpty()) {
+            tvSharedEmpty.setVisibility(View.VISIBLE);
+            return;
+        }
+        tvSharedEmpty.setVisibility(View.GONE);
+        LayoutInflater inflater = LayoutInflater.from(this);
+        for (User person : people) {
+            TextView row = (TextView) inflater.inflate(R.layout.item_shared_profile, sharedProfiles, false);
+            row.setText(getString(R.string.profile_shared_person, displayName(person)));
+            row.setPaintFlags(row.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
+            row.setOnClickListener(v -> openProfile(person.getId()));
+            sharedProfiles.addView(row);
+        }
+    }
+
+    private void openProfile(String userId) {
+        if (userId == null || userId.isEmpty()) {
+            return;
+        }
+        Intent intent = new Intent(this, ProfileActivity.class);
+        intent.putExtra(ProfileActivity.EXTRA_USER_ID, userId);
+        startActivity(intent);
+    }
+
+    private String displayName(User user) {
+        if (user == null) {
+            return getString(R.string.profile_unknown_name);
+        }
+        if (user.getFullName() != null && !user.getFullName().isEmpty()) {
+            return user.getFullName();
+        }
+        if (user.getNickname() != null && !user.getNickname().isEmpty()) {
+            return user.getNickname();
+        }
+        return getString(R.string.profile_unknown_name);
     }
 
     /** UCS-2.3.4: show "Reduce character count ({chars}/250)." and disable the button when the note is too long. */
@@ -130,16 +185,6 @@ public class RideDetailActivity extends AppCompatActivity {
                 updateButton();
             }
         });
-    }
-
-    private void openOrganizerProfile() {
-        if (ride == null || ride.getOrganizer() == null || ride.getOrganizer().getId() == null
-                || ride.getOrganizer().getId().isEmpty()) {
-            return;
-        }
-        Intent intent = new Intent(this, ProfileActivity.class);
-        intent.putExtra(ProfileActivity.EXTRA_USER_ID, ride.getOrganizer().getId());
-        startActivity(intent);
     }
 
     private String noteText() {

@@ -49,18 +49,41 @@
                 android:textSize="16sp" />
         </com.google.android.material.card.MaterialCardView>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnViewProfile"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        <TextView
+            android:id="@+id/tvSharedHeading"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="@string/action_view_profile"
-            android:textColor="@color/usc_cardinal"
+            android:text="@string/profile_shared_heading"
+            android:textColor="?attr/colorPrimary"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:visibility="gone"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/cardDetails"
-            app:strokeColor="@color/usc_cardinal" />
+            app:layout_constraintTop_toBottomOf="@id/cardDetails" />
+
+        <LinearLayout
+            android:id="@+id/sharedProfiles"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tvSharedHeading" />
+
+        <TextView
+            android:id="@+id/tvSharedEmpty"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/profile_shared_empty"
+            android:textColor="?android:attr/textColorSecondary"
+            android:textSize="14sp"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/sharedProfiles" />
 
         <TextView
             android:id="@+id/tvUnavailable"
@@ -73,7 +96,7 @@
             android:visibility="gone"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/btnViewProfile" />
+            app:layout_constraintTop_toBottomOf="@id/tvSharedEmpty" />
 
         <!-- UCS-2.3.4: optional note to the organizer, at most 250 characters -->
         <com.google.android.material.textfield.TextInputLayout

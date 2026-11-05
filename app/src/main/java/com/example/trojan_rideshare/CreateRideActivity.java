@@ -224,8 +224,8 @@ public class CreateRideActivity extends AppCompatActivity {
         }
 
         double expectedCost = RideManager.parseCost(costText);
-        if (expectedCost < 0) {
-            tilExpectedCost.setError("Please enter a cost with up to 2 decimals");
+        if (expectedCost <= 0) {
+            tilExpectedCost.setError("Please enter a cost greater than $0 with up to 2 decimals");
             isValid = false;
         }
 
