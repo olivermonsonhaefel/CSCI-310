@@ -6,7 +6,6 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.function.Consumer;
 
 @SuppressWarnings({"unused", "RedundantSuppression"})
@@ -29,26 +28,24 @@ public class AuthManager {
         return instance;
     }
 
-    public void registerUser(String fname, String lname, String username, String password, Consumer<Boolean> callback) {
-        String fullName = fname + " " + lname;
-        int defaultGradYear = 2026;
-        int defaultUscId = 1234567890;
+    public void registerUser(String fullName, String email, long uscId, int graduationYear, String password, String nickname, Consumer<Boolean> callback) {
+        String finalNickname = (nickname == null || nickname.trim().isEmpty()) ? fullName : nickname.trim();
 
-        mAuth.createUserWithEmailAndPassword(username, password)
+        mAuth.createUserWithEmailAndPassword(email, password)
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful() && mAuth.getCurrentUser() != null) {
                         FirebaseUser firebaseUser = mAuth.getCurrentUser();
                         String uid = firebaseUser.getUid();
 
-                        User newUser = new User(uid, username, password, fullName, fname, defaultGradYear, defaultUscId);
+                        User newUser = new User(uid, email, password, fullName, finalNickname, graduationYear, uscId);
 
                         Map<String, Object> userMap = new HashMap<>();
                         userMap.put("id", uid);
-                        userMap.put("email", username);
+                        userMap.put("email", email);
                         userMap.put("fullName", fullName);
-                        userMap.put("nickname", fname);
-                        userMap.put("graduationYear", defaultGradYear);
-                        userMap.put("uscId", defaultUscId);
+                        userMap.put("nickname", finalNickname);
+                        userMap.put("graduationYear", graduationYear);
+                        userMap.put("uscId", uscId);
 
                         db.collection("users").document(uid)
                                 .set(userMap)
@@ -77,17 +74,19 @@ public class AuthManager {
                         db.collection("users").document(uid).get()
                                 .addOnSuccessListener(documentSnapshot -> {
                                     if (documentSnapshot.exists()) {
+                                        Long uscIdVal = documentSnapshot.getLong("uscId");
+                                        Long gradYearVal = documentSnapshot.getLong("graduationYear");
                                         currentUser = new User(
                                                 uid,
                                                 documentSnapshot.getString("email"),
                                                 password,
                                                 documentSnapshot.getString("fullName"),
                                                 documentSnapshot.getString("nickname"),
-                                                Objects.requireNonNull(documentSnapshot.getLong("graduationYear")).intValue(),
-                                                Objects.requireNonNull(documentSnapshot.getLong("uscId")).intValue()
+                                                gradYearVal != null ? gradYearVal.intValue() : 2026,
+                                                uscIdVal != null ? uscIdVal : 0L
                                         );
                                     } else {
-                                        currentUser = new User(uid, username, password, username, username, 2026, 123456789);
+                                        currentUser = new User(uid, username, password, username, username, 2026, 1234567890L);
                                     }
                                     callback.accept(true);
                                 })
@@ -102,7 +101,7 @@ public class AuthManager {
                 });
     }
 
-    public boolean authenticateUser(String username, int userId) {
+    public boolean authenticateUser(String username, long userId) {
         FirebaseUser firebaseUser = mAuth.getCurrentUser();
         return firebaseUser != null && firebaseUser.getEmail() != null && firebaseUser.getEmail().equals(username);
     }
@@ -132,7 +131,7 @@ public class AuthManager {
     public User getCurrentUser() {
         if (currentUser == null && mAuth.getCurrentUser() != null) {
             FirebaseUser fu = mAuth.getCurrentUser();
-            currentUser = new User(fu.getUid(), fu.getEmail(), "", fu.getEmail(), "", 2026, 123456789);
+            currentUser = new User(fu.getUid(), fu.getEmail(), "", fu.getEmail(), "", 2026, 1234567890L);
         }
         return currentUser;
     }
