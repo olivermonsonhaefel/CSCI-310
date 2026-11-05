@@ -14,12 +14,17 @@ public class Expense {
     private final Date createdAt;
     private final User payer;
     private final User payee;
+    private final String rideId; // null for a separately entered expense
 
     public Expense(double amount, User payer, User payee) {
         this(UUID.randomUUID().toString(), amount, false, new Date(), payer, payee);
     }
 
     public Expense(String id, double amount, boolean paid, Date createdAt, User payer, User payee) {
+        this(id, amount, paid, createdAt, payer, payee, null);
+    }
+
+    public Expense(String id, double amount, boolean paid, Date createdAt, User payer, User payee, String rideId) {
         if (id == null || id.isEmpty() || id.contains("/")) {
             throw new IllegalArgumentException("Expense id is required and must be a document id");
         }
@@ -38,6 +43,10 @@ public class Expense {
                 || payer.getId().equals(payee.getId())) {
             throw new IllegalArgumentException("Payer and payee must be different identified users");
         }
+        if (rideId != null && (rideId.isEmpty() || rideId.contains("/"))) {
+            throw new IllegalArgumentException("Ride id must be a document id");
+        }
+        this.rideId = rideId;
         this.id = id;
         this.amount = amount;
         this.paid = paid;
@@ -45,6 +54,7 @@ public class Expense {
     }
 
     public String getId() { return id; }
+    public String getRideId() { return rideId; }
     public double getAmount() { return amount; }
     public boolean isPaid() { return paid; }
     public Date getCreatedAt() { return new Date(createdAt.getTime()); }

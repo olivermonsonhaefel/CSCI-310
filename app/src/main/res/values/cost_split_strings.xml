@@ -1,0 +1,19 @@
+<resources>
+    <string name="cost_split_positive_total">Enter an actual total greater than $0.00, with at most two decimal places.</string>
+    <string name="cost_split_preview">Review cost allocation</string>
+    <string name="cost_split_review">Review shares</string>
+    <string name="cost_split_preview_total">Actual total: %1$s</string>
+    <string name="cost_split_preview_share">%1$s: %2$s</string>
+    <string name="cost_split_preview_policy">Your organizer share is automatically Paid. Zero shares are automatically Paid. Saved ride shares cannot be edited or deleted.</string>
+    <string name="cost_split_fixed">This ride already has a saved allocation. Its cost shares cannot be changed.</string>
+    <string name="cost_split_profile">View %1$s’s profile</string>
+    <string name="cost_split_my_profile">My payment profile</string>
+    <string name="cost_split_profile_title">Rider profile</string>
+    <string name="cost_split_profile_loading">Loading payment status…</string>
+    <string name="cost_split_profile_error">Could not load payment status. Close this profile and try again.</string>
+    <string name="cost_split_profile_flagged">Flagged for an unpaid ride share</string>
+    <string name="cost_split_profile_clear">No unpaid ride flags</string>
+    <string name="cost_split_flag_policy">Organizers may flag a positive unpaid share immediately. Recording payment clears its flag.</string>
+    <string name="cost_split_organizer_cost">Your share: $%1$s · Paid (organizer)</string>
+    <string name="cost_split_saved_note">Final ride allocation · Amount cannot be changed</string>
+</resources>
