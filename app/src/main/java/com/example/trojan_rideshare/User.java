@@ -10,24 +10,24 @@ public class User {
     private final String fullName;
     private String nickname;
     private final int graduationYear;
-    private final int uscId;
+    private final long uscId;
 
-    public User(String email, String password, String fullName, String nickname, int graduationYear, int uscId) {
+    public User(String email, String password, String fullName, String nickname, int graduationYear, long uscId) {
         this.id = UUID.randomUUID().toString();
         this.email = email;
         this.password = hashPassword(password);
         this.fullName = fullName;
-        this.nickname = nickname;
+        this.nickname = (nickname == null || nickname.trim().isEmpty()) ? fullName : nickname.trim();
         this.graduationYear = graduationYear;
         this.uscId = uscId;
     }
 
-    public User(String id, String email, String password, String fullName, String nickname, int graduationYear, int uscId) {
+    public User(String id, String email, String password, String fullName, String nickname, int graduationYear, long uscId) {
         this.id = id;
         this.email = email;
         this.password = password;
         this.fullName = fullName;
-        this.nickname = nickname;
+        this.nickname = (nickname == null || nickname.trim().isEmpty()) ? fullName : nickname.trim();
         this.graduationYear = graduationYear;
         this.uscId = uscId;
     }
@@ -42,12 +42,14 @@ public class User {
     public String getFullName() { return fullName; }
     public String getNickname() { return nickname; }
     public int getGraduationYear() { return graduationYear; }
-    public int getUscId() { return uscId; }
+    public long getUscId() { return uscId; }
 
-    public void setNickname(String nickname) { this.nickname = nickname; }
+    public void setNickname(String nickname) { 
+        this.nickname = (nickname == null || nickname.trim().isEmpty()) ? fullName : nickname.trim(); 
+    }
 
     public void updateNickname(String newNickName) {
-        this.nickname = newNickName;
+        this.nickname = (newNickName == null || newNickName.trim().isEmpty()) ? fullName : newNickName.trim();
     }
 
     public String getUserInfo() {
