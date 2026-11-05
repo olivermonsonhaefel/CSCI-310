@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/mapPinRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/colorSurface"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:id="@+id/tvMapTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/action_set_on_map"
+        android:textColor="@color/usc_cardinal"
+        android:textSize="20sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/tvMapPrompt"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="8dp"
+        android:paddingBottom="12dp"
+        android:text="@string/map_prompt_origin"
+        android:textColor="?android:attr/textColorSecondary"
+        android:textSize="15sp" />
+
+    <WebView
+        android:id="@+id/mapWeb"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:contentDescription="@string/action_set_on_map" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingTop="16dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnClearPins"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:layout_weight="1"
+            android:text="@string/action_clear_pins"
+            android:textColor="@color/usc_cardinal"
+            app:strokeColor="@color/usc_cardinal" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnUsePlaces"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:backgroundTint="@color/usc_cardinal"
+            android:enabled="false"
+            android:text="@string/action_use_places"
+            android:textColor="@color/usc_gold" />
+    </LinearLayout>
+
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="12dp"
+        android:indeterminateTint="@color/usc_cardinal"
+        android:visibility="gone" />
+
+</LinearLayout>

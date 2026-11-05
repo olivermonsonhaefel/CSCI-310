@@ -25,7 +25,9 @@ public class LoginActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        ScreenInsets.enable(this);
         setContentView(R.layout.activity_login);
+        ScreenInsets.pad(findViewById(R.id.loginRoot));
 
         authManager = AuthManager.getInstance();
 

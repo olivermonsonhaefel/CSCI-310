@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="action_join_requests">Join Requests</string>
+    <string name="join_requests_title">Join Requests</string>
+    <string name="join_requests_subtitle">Requests for your rides and rides you asked to join</string>
+
+    <!-- Organizer: Pending Join Requests (UCS-2.3.9) -->
+    <string name="label_pending_join_requests">Pending Join Requests</string>
+    <string name="no_pending_join_requests">No pending requests.</string>
+    <string name="label_riders_count">%1$d/%2$d riders</string>
+    <string name="label_requested">Requested %1$s</string>
+    <string name="label_join_note">Note: %1$s</string>
+    <string name="action_accept">Accept</string>
+    <string name="action_reject">Reject</string>
+    <string name="msg_request_accepted">Request accepted</string>
+    <string name="msg_request_rejected">Request rejected</string>
+    <string name="error_accept_request">Could not accept. The ride may be full, or the request was already answered.</string>
+    <string name="error_reject_request">Could not reject the request. Try again.</string>
+    <string name="confirm_reject_request">Reject this request? %1$s won\'t be able to request this ride again.</string>
+
+    <!-- Requester: Join Ride Requests (UCS-2.3.8) -->
+    <string name="label_join_ride_requests">Join Ride Requests</string>
+    <string name="no_join_ride_requests">You haven\'t asked to join any rides.</string>
+    <string name="label_request_status">Request status: %1$s</string>
+    <string name="action_cancel_request">Cancel Request</string>
+    <string name="msg_request_cancelled">Request cancelled</string>
+    <string name="error_cancel_request">Could not cancel. The request may have already been answered.</string>
+
+    <string name="error_load_join_requests">Could not load requests. Try again.</string>
+</resources>

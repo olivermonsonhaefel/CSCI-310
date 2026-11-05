@@ -5,16 +5,15 @@ import android.os.Bundle;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 
 public class MainActivity extends AppCompatActivity {
+
+    public static final String EXTRA_ACCOUNT_CREATED = "accountCreated";
+    private static final long ACCOUNT_MESSAGE_MS = 15_000;
 
     private AuthManager authManager;
     private User currentUser;
@@ -25,16 +24,49 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
+        ScreenInsets.enable(this);
         setContentView(R.layout.activity_main);
+        ScreenInsets.pad(findViewById(R.id.searchScroll));
 
         authManager = AuthManager.getInstance();
         currentUser = authManager.getCurrentUser();
 
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
+        View cardInfo = findViewById(R.id.cardInfo);
+        if (getIntent().getBooleanExtra(EXTRA_ACCOUNT_CREATED, false)) {
+            cardInfo.setVisibility(View.VISIBLE);
+            handler.postDelayed(hideAccountMessage, ACCOUNT_MESSAGE_MS);
+        }
+
+        MaterialButton btnMyProfile = findViewById(R.id.btnMyProfile);
+        btnMyProfile.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, ProfileActivity.class)));
+
+        MaterialButton btnCreateRide = findViewById(R.id.btnCreateRide);
+        btnCreateRide.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, CreateRideActivity.class)));
+
+        new RideSearchController(this).start();
+
+        MaterialButton btnMyRides = findViewById(R.id.btnMyRides);
+        btnMyRides.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, RideHistoryActivity.class)));
+
+        MaterialButton btnJoinRequests = findViewById(R.id.btnJoinRequests);
+        btnJoinRequests.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, JoinRequestsActivity.class)));
+
+        View searchHeading = findViewById(R.id.tvSearchHeading);
+        View searchSubtitle = findViewById(R.id.tvSearchSubtitle);
+        View searchForm = findViewById(R.id.searchForm);
+        MaterialButton btnSearchRides = findViewById(R.id.btnSearchRides);
+        btnSearchRides.setOnClickListener(v -> {
+            boolean show = searchForm.getVisibility() != View.VISIBLE;
+            int visibility = show ? View.VISIBLE : View.GONE;
+            searchHeading.setVisibility(visibility);
+            searchSubtitle.setVisibility(visibility);
+            searchForm.setVisibility(visibility);
+            if (show) {
+                searchForm.post(() -> {
+                    ScrollView scroll = findViewById(R.id.searchScroll);
+                    scroll.smoothScrollTo(0, searchHeading.getTop());
+                });
+            }
         });
 
         tvFullName = findViewById(R.id.tvFullName);
@@ -83,5 +115,11 @@ public class MainActivity extends AppCompatActivity {
             currentUser.updateNickname(newNickname);
         }
         Toast.makeText(this, "Displayed nickname updated to: " + newNickname, Toast.LENGTH_LONG).show();
+    }
+
+    @Override
+    protected void onDestroy() {
+        handler.removeCallbacks(hideAccountMessage);
+        super.onDestroy();
     }
 }

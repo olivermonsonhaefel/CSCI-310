@@ -24,7 +24,9 @@ public class RegisterActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        ScreenInsets.enable(this);
         setContentView(R.layout.activity_register);
+        ScreenInsets.pad(findViewById(R.id.registerRoot));
 
         authManager = AuthManager.getInstance();
 
@@ -120,6 +122,7 @@ public class RegisterActivity extends AppCompatActivity {
             if (success) {
                 Toast.makeText(this, "Account created successfully!", Toast.LENGTH_LONG).show();
                 Intent intent = new Intent(RegisterActivity.this, MainActivity.class);
+                intent.putExtra(MainActivity.EXTRA_ACCOUNT_CREATED, true);
                 startActivity(intent);
                 finish();
             } else {
