@@ -89,6 +89,7 @@ public class RegisterActivity extends AppCompatActivity {
             if (success) {
                 Toast.makeText(this, "Account created & added to database successfully!", Toast.LENGTH_LONG).show();
                 Intent intent = new Intent(RegisterActivity.this, MainActivity.class);
+                intent.putExtra(MainActivity.EXTRA_ACCOUNT_CREATED, true);
                 startActivity(intent);
                 finish();
             } else {

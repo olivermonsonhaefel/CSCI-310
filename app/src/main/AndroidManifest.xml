@@ -42,6 +42,10 @@
             android:name=".MapPinActivity"
             android:exported="false" />
         <activity
+            android:name=".ProfileActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
             android:name=".RideDetailActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />

@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
 import android.content.Intent;
+import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -367,7 +368,17 @@ public class RideSearchController {
         for (Ride ride : rides) {
             View row = inflater.inflate(R.layout.item_ride_result, resultsContainer, false);
             ((TextView) row.findViewById(R.id.tvRideTitle)).setText(ride.getTitle());
-            ((TextView) row.findViewById(R.id.tvOrganizer)).setText(activity.getString(R.string.label_organizer, organizerName(ride)));
+            TextView organizerView = row.findViewById(R.id.tvOrganizer);
+            organizerView.setText(activity.getString(R.string.label_organizer, organizerName(ride)));
+            String organizerId = ride.getOrganizer() != null ? ride.getOrganizer().getId() : "";
+            if (organizerId != null && !organizerId.isEmpty()) {
+                organizerView.setPaintFlags(organizerView.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
+                organizerView.setOnClickListener(v -> {
+                    Intent profile = new Intent(activity, ProfileActivity.class);
+                    profile.putExtra(ProfileActivity.EXTRA_USER_ID, organizerId);
+                    activity.startActivity(profile);
+                });
+            }
             ((TextView) row.findViewById(R.id.tvRoute)).setText(activity.getString(R.string.label_route,
                     ride.getOrigin().getPOIName(), ride.getDestination().getPOIName()));
             String when = new SimpleDateFormat("EEE, MMM d, yyyy · h:mm a", Locale.US).format(ride.getDepartureTime());
