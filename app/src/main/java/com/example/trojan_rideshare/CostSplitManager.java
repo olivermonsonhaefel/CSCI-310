@@ -13,6 +13,8 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -47,7 +49,7 @@ public class CostSplitManager {
      * own share. Only reimbursements to the organizer become expenses. Equal splits
      * distribute leftover cents in Ride.getRiders() order, including the organizer.
      * One atomic transaction creates the split; a second split is rejected to avoid
-     * duplicating debts or overwriting recorded payments (use editExpense instead).
+     * duplicating debts or overwriting recorded payments. Saved ride allocations are immutable.
      */
     public void divideCost(Ride ride, double actualTotalCost, CostSplitMode mode,
                            Map<String, Double> customAmounts, Consumer<Boolean> callback) {
@@ -56,52 +58,27 @@ public class CostSplitManager {
             fail(callback, "A logged-in user and ride are required");
             return;
         }
-        final long total;
+        // Validate before scheduling and snapshot mutable input before transaction retries.
         try {
-            total = cents(actualTotalCost);
-            if (mode == null || (mode == CostSplitMode.CUSTOM && customAmounts == null)
-                    || (mode == CostSplitMode.EQUAL && customAmounts != null)) {
-                throw new IllegalArgumentException("Supply custom amounts only for CUSTOM mode");
-            }
+            calculateShares(actualTotalCost, ride.getRiders(), ride.getOrganizer().getId(), mode, customAmounts);
         } catch (IllegalArgumentException e) {
             fail(callback, e.getMessage());
             return;
         }
-        // Snapshot caller-owned input before Firestore schedules/retries the transaction.
         Map<String, Double> custom = customAmounts == null ? null : new HashMap<>(customAmounts);
         Date createdAt = new Date();
         db.runTransaction(transaction -> {
-            Ride current = RideManager.toRide(transaction.get(db.collection("rides").document(ride.getRideID())));
+            DocumentReference rideRef = db.collection("rides").document(ride.getRideID());
+            DocumentSnapshot snapshot = transaction.get(rideRef);
+            Ride current = RideManager.toRide(snapshot);
             requireCompleted(current);
             requireOrganizer(current, actor);
+            if (snapshot.contains("organizerShare") || snapshot.contains("actualTotalCost")) {
+                throw abort("This ride already has a cost split");
+            }
+            Map<String, Double> shares = calculateShares(actualTotalCost, current.getRiders(),
+                    current.getOrganizer().getId(), mode, custom);
             List<String> riders = current.getRiders();
-            if (riders.isEmpty() || !riders.contains(current.getOrganizer().getId())
-                    || new java.util.HashSet<>(riders).size() != riders.size()) {
-                throw abort("Ride must contain distinct riders including the organizer");
-            }
-            Map<String, Long> shares = new LinkedHashMap<>();
-            long sum = 0;
-            if (mode == CostSplitMode.CUSTOM && !custom.keySet().equals(new java.util.HashSet<>(riders))) {
-                throw abort("Custom amounts must include exactly the current riders");
-            }
-            for (int i = 0; i < riders.size(); i++) {
-                String uid = riders.get(i);
-                long share;
-                if (mode == CostSplitMode.EQUAL) {
-                    share = total / riders.size() + (i < total % riders.size() ? 1 : 0);
-                } else {
-                    Double value = custom.get(uid);
-                    if (value == null) {
-                        throw abort("Each rider needs a custom amount");
-                    }
-                    share = cents(value);
-                }
-                sum = Math.addExact(sum, share);
-                shares.put(uid, share);
-            }
-            if (sum != total) {
-                throw abort("Custom amounts must sum to the actual total cost");
-            }
             List<Expense> expenses = new ArrayList<>();
             for (String uid : riders) {
                 if (uid.equals(current.getOrganizer().getId())) {
@@ -112,16 +89,20 @@ public class CostSplitManager {
                     throw abort("This ride already has a cost split");
                 }
                 User payer = toUser(transaction.get(db.collection("users").document(uid)));
-                expenses.add(new Expense(ref.getId(), dollars(shares.get(uid)), false,
-                        createdAt, payer, current.getOrganizer()));
+                double share = shares.get(uid);
+                expenses.add(new Expense(ref.getId(), share, share == 0,
+                        createdAt, payer, current.getOrganizer(), current.getRideID()));
             }
             // All reads must precede writes in a Firestore transaction.
             for (Expense expense : expenses) {
                 transaction.set(db.collection("expenses").document(expense.getId()), toMap(expense));
             }
-            // The organizer owes no expense, so their own share is kept on the ride for the monthly summary.
-            transaction.update(db.collection("rides").document(current.getRideID()), "organizerShare",
-                    dollars(shares.get(current.getOrganizer().getId())));
+            Map<String, Object> saved = new HashMap<>();
+            saved.put("organizerShare", shares.get(current.getOrganizer().getId()));
+            saved.put("actualTotalCost", actualTotalCost);
+            saved.put("costShares", shares);
+            saved.put("costSplitSavedAt", createdAt);
+            transaction.update(rideRef, saved);
             return null;
         }).addOnSuccessListener(result -> callback.accept(true))
                 .addOnFailureListener(e -> fail(callback, "divideCost failed", e));
@@ -179,8 +160,8 @@ public class CostSplitManager {
                 transaction.update(ref, "paid", true);
                 transaction.delete(flag);
             } else {
-                if (expense.isPaid()) {
-                    throw abort("A settled expense cannot be flagged as unpaid");
+                if (expense.isPaid() || expense.getAmount() == 0) {
+                    throw abort("Only a positive unpaid share may be flagged");
                 }
                 Map<String, Object> values = new HashMap<>();
                 values.put("ride", db.collection("rides").document(current.getRideID()));
@@ -356,6 +337,9 @@ public class CostSplitManager {
         db.runTransaction(transaction -> {
             Expense current = toExpense(transaction.get(ref));
             requireParticipant(current, actor);
+            if (current.getRideId() != null) {
+                throw abort("Saved ride cost shares cannot be edited or deleted");
+            }
             if (delete) {
                 transaction.delete(ref);
                 transaction.delete(db.collection("riderFlags").document(ref.getId()));
@@ -525,6 +509,42 @@ public class CostSplitManager {
         }
     }
 
+    /** Validates and calculates the same cent-exact shares for both preview and saving. */
+    static Map<String, Double> calculateShares(double total, List<String> riders, String organizerId,
+                                               CostSplitMode mode, Map<String, Double> custom) {
+        long totalCents = cents(total);
+        if (totalCents == 0) throw new IllegalArgumentException("Actual total cost must be greater than zero");
+        if (riders == null || riders.isEmpty() || !riders.contains(organizerId)
+                || new HashSet<>(riders).size() != riders.size()) {
+            throw new IllegalArgumentException("Include distinct riders and the organizer");
+        }
+        if (mode == null || (mode == CostSplitMode.EQUAL && custom != null)
+                || (mode == CostSplitMode.CUSTOM
+                && (custom == null || !custom.keySet().equals(new HashSet<>(riders))))) {
+            throw new IllegalArgumentException("Custom shares must include exactly the participants");
+        }
+        Map<String, Double> shares = new LinkedHashMap<>();
+        long sum = 0;
+        for (int i = 0; i < riders.size(); i++) {
+            String uid = riders.get(i);
+            if (uid == null || uid.isEmpty()) throw new IllegalArgumentException("Participant id is required");
+            Long amount;
+            if (mode == CostSplitMode.EQUAL) {
+                amount = totalCents / riders.size() + (i < totalCents % riders.size() ? 1 : 0);
+            } else {
+                Double value = custom.get(uid);
+                if (value == null) throw new IllegalArgumentException("Each participant needs a share");
+                amount = cents(value);
+            }
+            // Subtracting from the remaining total also avoids overflow for invalid custom sums.
+            if (amount > totalCents - sum) throw new IllegalArgumentException("Shares must add up to the total");
+            sum += amount;
+            shares.put(uid, dollars(amount));
+        }
+        if (sum != totalCents) throw new IllegalArgumentException("Shares must add up to the total");
+        return Collections.unmodifiableMap(shares);
+    }
+
     private static long cents(double amount) {
         if (Double.isNaN(amount) || Double.isInfinite(amount) || amount < 0) {
             throw new IllegalArgumentException("Amount must be a nonnegative US dollar amount");
@@ -548,6 +568,7 @@ public class CostSplitManager {
         values.put("createdAt", expense.getCreatedAt());
         values.put("payer", toMap(expense.getPayer()));
         values.put("payee", toMap(expense.getPayee()));
+        if (expense.getRideId() != null) values.put("rideID", expense.getRideId());
         return values;
     }
 
@@ -572,7 +593,8 @@ public class CostSplitManager {
             throw abort("Invalid expense fields");
         }
         return new Expense(snapshot.getId(), ((Number) amount).doubleValue(), paid,
-                snapshot.getDate("createdAt"), toUser(snapshot.get("payer")), toUser(snapshot.get("payee")));
+                snapshot.getDate("createdAt"), toUser(snapshot.get("payer")), toUser(snapshot.get("payee")),
+                snapshot.getString("rideID"));
     }
 
     private static User toUser(DocumentSnapshot snapshot) throws FirebaseFirestoreException {

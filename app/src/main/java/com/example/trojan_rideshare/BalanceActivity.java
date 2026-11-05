@@ -58,6 +58,9 @@ public class BalanceActivity extends AppCompatActivity {
         message = findViewById(R.id.balanceMessage);
         personFilter = findViewById(R.id.balancePersonFilter);
         settledOnly = findViewById(R.id.balanceSettledOnly);
+        findViewById(R.id.costPaymentProfile).setOnClickListener(v -> {
+            if (!busy && active()) showPaymentProfile(user);
+        });
         findViewById(R.id.balanceRefresh).setOnClickListener(v -> {
             if (!busy) refresh();
         });
@@ -115,7 +118,7 @@ public class BalanceActivity extends AppCompatActivity {
         busy = loading;
         findViewById(R.id.balanceProgress).setVisibility(loading ? View.VISIBLE : View.GONE);
         for (int id : new int[]{R.id.balanceRefresh, R.id.balanceAdd, R.id.balanceSplit,
-                R.id.balanceComplete, R.id.balanceFlag,
+                R.id.balanceComplete, R.id.balanceFlag, R.id.costPaymentProfile,
                 R.id.balanceSimplify, R.id.balancePersonFilter, R.id.balanceSettledOnly}) {
             findViewById(id).setEnabled(!loading && user != null);
         }
@@ -239,8 +242,18 @@ public class BalanceActivity extends AppCompatActivity {
             if (!expense.isPaid()) {
                 body.addView(action(R.string.balance_record, () -> recordPayment(expense)));
             }
-            body.addView(action(R.string.balance_edit, () -> editExpense(expense)));
-            body.addView(action(R.string.balance_delete, () -> deleteExpense(expense)));
+            User otherPerson = expense.getPayer().getId().equals(user.getId())
+                    ? expense.getPayee() : expense.getPayer();
+            MaterialButton profile = action(R.string.cost_split_profile_title,
+                    () -> showPaymentProfile(otherPerson));
+            profile.setText(getString(R.string.cost_split_profile, name(otherPerson)));
+            body.addView(profile);
+            if (expense.getRideId() == null) {
+                body.addView(action(R.string.balance_edit, () -> editExpense(expense)));
+                body.addView(action(R.string.balance_delete, () -> deleteExpense(expense)));
+            } else {
+                body.addView(text(getString(R.string.cost_split_saved_note), 14));
+            }
             card.addView(body);
             container.addView(card);
         }
@@ -429,8 +442,6 @@ public class BalanceActivity extends AppCompatActivity {
                                     completeRide(ride);
                                 } else if (action == R.string.balance_flag) {
                                     chooseUnpaidRider(ride);
-                                } else if (ride.getNumOfRiders() < 2) {
-                                    Toast.makeText(this, R.string.balance_no_shared_riders, Toast.LENGTH_LONG).show();
                                 } else {
                                     prepareSplit(ride);
                                 }
@@ -449,8 +460,20 @@ public class BalanceActivity extends AppCompatActivity {
                 .setNegativeButton(R.string.action_cancel, null)
                 .setPositiveButton(R.string.balance_complete, (dialog, which) -> {
                     if (!busy && active()) {
-                        change(callback -> new RideManager().updateRideStatus(Status.COMPLETED, ride, callback),
-                                null, R.string.balance_complete_error, R.string.balance_complete_saved);
+                        setBusy(true);
+                        new RideManager().updateRideStatus(Status.COMPLETED, ride, success -> {
+                            if (!active()) return;
+                            setBusy(false);
+                            if (!success) {
+                                Toast.makeText(this, R.string.balance_complete_error, Toast.LENGTH_LONG).show();
+                                return;
+                            }
+                            new RideSearchManager().loadRide(ride.getRideID(), completed -> {
+                                if (!active()) return;
+                                if (completed != null) prepareSplit(completed);
+                                else Toast.makeText(this, R.string.balance_rides_error, Toast.LENGTH_LONG).show();
+                            });
+                        });
                     }
                 }).show();
     }
@@ -496,13 +519,31 @@ public class BalanceActivity extends AppCompatActivity {
 
     private void prepareSplit(Ride ride) {
         setBusy(true);
+        FirebaseFirestore.getInstance().collection("rides").document(ride.getRideID()).get()
+                .addOnSuccessListener(saved -> {
+                    if (!active()) return;
+                    setBusy(false);
+                    if (saved.contains("organizerShare") || saved.contains("actualTotalCost")) {
+                        Toast.makeText(this, R.string.cost_split_fixed, Toast.LENGTH_LONG).show();
+                    } else {
+                        prepareUnallocatedSplit(ride);
+                    }
+                }).addOnFailureListener(error -> {
+                    if (!active()) return;
+                    setBusy(false);
+                    Toast.makeText(this, R.string.balance_split_error, Toast.LENGTH_LONG).show();
+                });
+    }
+
+    private void prepareUnallocatedSplit(Ride ride) {
+        setBusy(true);
         manager.getRideExpenses(ride, existing -> {
             if (!active()) return;
             setBusy(false);
             if (existing == null) {
                 Toast.makeText(this, R.string.balance_ride_expenses_error, Toast.LENGTH_LONG).show();
             } else if (!existing.isEmpty()) {
-                Toast.makeText(this, R.string.balance_already_split, Toast.LENGTH_LONG).show();
+                Toast.makeText(this, R.string.cost_split_fixed, Toast.LENGTH_LONG).show();
             } else {
                 loadRidePeople(ride);
             }
@@ -565,14 +606,17 @@ public class BalanceActivity extends AppCompatActivity {
         scroll.addView(form);
         AlertDialog dialog = new MaterialAlertDialogBuilder(this).setTitle(R.string.balance_split)
                 .setView(scroll).setNegativeButton(R.string.action_cancel, null)
-                .setPositiveButton(R.string.balance_save, null).create();
+                .setPositiveButton(R.string.cost_split_review, null).create();
         dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             if (busy) return;
             Double cost = parseAmount(total);
             if (cost == null) return;
+            if (cost <= 0) {
+                total.setError(getString(R.string.cost_split_positive_total));
+                return;
+            }
             if (mode.getSelectedItemPosition() == 0) {
-                change(callback -> manager.divideCost(ride, cost, CostSplitMode.EQUAL, callback), dialog,
-                        R.string.balance_split_error, R.string.balance_split_saved);
+                previewSplit(ride, riders, cost, CostSplitMode.EQUAL, null, dialog);
                 return;
             }
             Map<String, Double> shares = new LinkedHashMap<>();
@@ -587,16 +631,43 @@ public class BalanceActivity extends AppCompatActivity {
                 total.setError(getString(R.string.balance_custom_total_error));
                 return;
             }
-            change(callback -> manager.divideCost(ride, cost, CostSplitMode.CUSTOM, shares, callback), dialog,
-                    R.string.balance_split_error, R.string.balance_split_saved);
+            previewSplit(ride, riders, cost, CostSplitMode.CUSTOM, shares, dialog);
         }));
         dialog.show();
+    }
+
+    private void previewSplit(Ride ride, Map<String, User> riders, double total, CostSplitMode mode,
+                              Map<String, Double> custom, AlertDialog form) {
+        final Map<String, Double> shares;
+        try {
+            shares = CostSplitManager.calculateShares(total, ride.getRiders(), ride.getOrganizer().getId(), mode, custom);
+        } catch (IllegalArgumentException error) {
+            Toast.makeText(this, R.string.balance_split_error, Toast.LENGTH_LONG).show();
+            return;
+        }
+        StringBuilder details = new StringBuilder(ride.getTitle()).append("\n\n")
+                .append(getString(R.string.cost_split_preview_total, money(BigDecimal.valueOf(total))));
+        for (String id : ride.getRiders()) {
+            details.append("\n\n").append(getString(R.string.cost_split_preview_share,
+                    name(riders.get(id)), money(BigDecimal.valueOf(shares.get(id)))));
+        }
+        details.append("\n\n").append(getString(R.string.cost_split_preview_policy));
+        new MaterialAlertDialogBuilder(this).setTitle(R.string.cost_split_preview).setMessage(details)
+                .setNegativeButton(R.string.balance_back, null)
+                .setPositiveButton(R.string.balance_save, (preview, which) -> {
+                    if (!busy && active()) {
+                        change(callback -> manager.divideCost(ride, total, mode, custom, callback), form,
+                                R.string.balance_split_error, R.string.balance_split_saved);
+                    }
+                }).show();
     }
 
     private Double parseAmount(TextInputEditText input) {
         try {
             String value = input.getText() == null ? "" : input.getText().toString().trim();
-            BigDecimal amount = new BigDecimal(value).setScale(2, RoundingMode.UNNECESSARY);
+            BigDecimal amount = new BigDecimal(value);
+            if (amount.scale() > 2) throw new NumberFormatException();
+            amount = amount.setScale(2, RoundingMode.UNNECESSARY);
             if (amount.signum() < 0) throw new NumberFormatException();
             amount.movePointRight(2).longValueExact();
             double result = amount.doubleValue();
@@ -607,6 +678,59 @@ public class BalanceActivity extends AppCompatActivity {
             input.setError(getString(R.string.balance_amount_error));
             return null;
         }
+    }
+
+    private void showPaymentProfile(User person) {
+        if (person == null || isFinishing() || isDestroyed()) return;
+        User actor = AuthManager.getInstance().getCurrentUser();
+        if (actor == null) return;
+        String viewerId = actor.getId();
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        int padding = Math.round(24 * getResources().getDisplayMetrics().density);
+        content.setPadding(padding, padding / 2, padding, padding);
+        TextView name = new TextView(this);
+        name.setText(person.getFullName());
+        name.setTextSize(20);
+        content.addView(name);
+        TextView status = new TextView(this);
+        status.setText(R.string.cost_split_profile_loading);
+        status.setTextSize(16);
+        status.setAccessibilityLiveRegion(android.view.View.ACCESSIBILITY_LIVE_REGION_POLITE);
+        content.addView(status);
+        TextView policy = new TextView(this);
+        policy.setPadding(0, padding / 2, 0, 0);
+        policy.setText(R.string.cost_split_flag_policy);
+        content.addView(policy);
+        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.cost_split_profile_title).setView(content)
+                .setPositiveButton(android.R.string.ok, null).show();
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        db.collection("users").document(person.getId()).get().addOnSuccessListener(profile -> {
+            if (!paymentProfileVisible(dialog, viewerId)) return;
+            String fullName = profile.getString("fullName");
+            String nickname = profile.getString("nickname");
+            String display = fullName != null ? fullName : person.getFullName();
+            if (nickname != null && !nickname.trim().isEmpty() && !nickname.equals(display)) {
+                display = nickname + "\n" + display;
+            }
+            name.setText(display);
+        });
+        // Uses the existing reference field; no new composite index or profile schema is needed.
+        db.collection("riderFlags").whereEqualTo("flaggedUser", db.collection("users").document(person.getId()))
+                .get().addOnSuccessListener(flags -> {
+                    if (!paymentProfileVisible(dialog, viewerId)) return;
+                    status.setText(flags.isEmpty() ? R.string.cost_split_profile_clear : R.string.cost_split_profile_flagged);
+                }).addOnFailureListener(error -> {
+                    if (paymentProfileVisible(dialog, viewerId)) status.setText(R.string.cost_split_profile_error);
+                });
+    }
+
+    private boolean paymentProfileVisible(AlertDialog dialog,
+                                   String viewerId) {
+        User current = AuthManager.getInstance().getCurrentUser();
+        return !isFinishing() && !isDestroyed() && dialog.isShowing()
+                && current != null && viewerId.equals(current.getId());
     }
 
     private User profile(DocumentSnapshot snapshot) {
