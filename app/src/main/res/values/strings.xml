@@ -8,11 +8,9 @@
     <string name="error_email_required">Email is required</string>
     <string name="error_password_required">Password is required</string>
     <string name="create_account_title">Create Account</string>
-    <string name="prompt_full_name">Full Name</string>
-    <string name="prompt_usc_email">USC Email (e.g., user@usc.edu)</string>
-    <string name="prompt_usc_id">USC ID (e.g., 1234567890)</string>
-    <string name="prompt_grad_year">Expected Graduation Year (e.g., 2026)</string>
-    <string name="prompt_nickname">Nickname (Optional, defaults to Full Name)</string>
+    <string name="prompt_first_name">First Name</string>
+    <string name="prompt_last_name">Last Name</string>
+    <string name="prompt_email_username">Email (Username)</string>
     <string name="action_register">Register</string>
     <string name="prompt_have_account">Already have an account? Sign In</string>
     <string name="prompt_no_account">Don\'t have an account? Register</string>
@@ -22,7 +20,139 @@
     <string name="account_success_desc">Your account is active and ready. Book rides or connect with fellow Trojans across campus securely.</string>
     <string name="action_logout">Log Out</string>
     <string name="register_subtitle">Join Trojan Rideshare today</string>
-    <string name="profile_title">User Profile</string>
+    <string name="action_create_ride">Create a Ride</string>
+    <string name="create_ride_title">Create a Ride</string>
+    <string name="create_ride_subtitle">Share a ride with fellow Trojans</string>
+    <string name="prompt_ride_title">Title</string>
+    <string name="prompt_origin">Origin (e.g. USC Village)</string>
+    <string name="prompt_destination">Destination (e.g. LAX)</string>
+    <string name="prompt_ride_date">Ride Date</string>
+    <string name="prompt_departure_time">Departure Time</string>
+    <string name="prompt_max_riders">Maximum Riders (including you)</string>
+    <string name="prompt_expected_cost">Expected Total Cost ($)</string>
+    <string name="prompt_note">Note (optional)</string>
+    <string name="action_post_ride">Post Ride</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_search_rides">Search Rides</string>
+    <string name="action_set_on_map">Set origin and destination on a map</string>
+    <string name="map_prompt_origin">Tap the map to set your origin.</string>
+    <string name="map_prompt_destination">Origin set. Tap the map to set your destination.</string>
+    <string name="map_prompt_ready">Origin and destination are set. Tap again to move the destination, or use these places.</string>
+    <string name="action_use_places">Use these places</string>
+    <string name="action_clear_pins">Clear pins</string>
+    <string name="search_ride_title">Search Rides</string>
+    <string name="search_ride_subtitle">Find a ride that matches your trip</string>
+    <string name="prompt_radius">Flexibility radius (miles)</string>
+    <string name="prompt_window_start">Window start</string>
+    <string name="prompt_window_end">Window end</string>
+    <string name="prompt_sort">Sort results</string>
+    <string name="default_radius">1</string>
+    <string name="label_organizer">Organizer: %1$s</string>
+    <string name="label_route">From %1$s to %2$s</string>
+    <string name="label_status_capacity">%1$s · %2$s (%3$d seats open)</string>
+    <string name="label_expected_cost">Expected cost: $%1$s total, $%2$s per person</string>
+    <string name="error_search_failed">Could not search rides. Try again.</string>
+    <string name="ride_detail_title">Ride Details</string>
+    <string name="ride_cancelled_notice">This ride was cancelled. Its current status and capacity are shown above.</string>
+    <string name="action_request_join">Request to Join</string>
+    <string name="action_back_to_search">Back to search</string>
+    <string name="join_not_in_search">Sending a join request is a separate feature and is not part of search.</string>
+    <string name="error_ride_unavailable">This ride is no longer available.</string>
+    <string name="action_my_rides">My Rides</string>
+    <string name="action_my_profile">My Profile</string>
+    <string name="action_view_profile">View profile</string>
+    <string name="profile_title">Profile</string>
+    <string name="profile_title_own">My Profile</string>
+    <string name="profile_flag_label">Payment flag</string>
+    <string name="profile_flag_count">Flagged unpaid expenses: %1$d</string>
+    <string name="profile_flag_error">Could not load payment flags.</string>
+    <string name="profile_rides_heading">Rides</string>
+    <string name="profile_completed_heading">Completed</string>
+    <string name="profile_cancelled_heading">Cancelled</string>
+    <string name="profile_public_hint">Turn Public on separately for an upcoming ride and a completed ride. Other people only see the ones you mark.</string>
+    <string name="profile_no_upcoming">No upcoming rides.</string>
+    <string name="profile_no_completed">No completed rides.</string>
+    <string name="profile_no_cancelled">No cancelled rides.</string>
+    <string name="profile_no_public_upcoming">No public upcoming rides.</string>
+    <string name="profile_no_public_completed">No public completed rides.</string>
+    <string name="profile_no_public_cancelled">No public cancelled rides.</string>
+    <string name="profile_ride_public">Public</string>
+    <string name="profile_no_rides">You have not been on a ride yet.</string>
+    <string name="profile_no_public_rides">No public rides.</string>
+    <string name="profile_load_error">Could not load this profile.</string>
+    <string name="profile_public_failed">Could not update that ride. Try again.</string>
+    <string name="profile_unknown_name">Rider</string>
+    <string name="label_graduation_year">Class of %1$d</string>
+    <string name="ride_history_title">My Rides</string>
+    <string name="ride_history_subtitle">Your upcoming and past rides</string>
+    <string name="label_upcoming">Upcoming</string>
+    <string name="label_history">History</string>
+    <string name="prompt_status">Status</string>
+    <string name="prompt_participant">Rode with</string>
+    <string name="action_search_history">Search History</string>
+    <string name="option_all">All</string>
+    <string name="no_upcoming_rides">No upcoming rides.</string>
+    <string name="no_past_rides">No past rides.</string>
+    <string name="no_matching_rides">No rides match your filters.</string>
+    <string name="error_load_rides">Could not load your rides. Try again.</string>
+    <string name="label_role">Your role: %1$s</string>
+    <string name="role_organizer">Organizer</string>
+    <string name="role_rider">Rider</string>
+    <string name="label_status_riders">%1$s · %2$s (%3$d/%4$d riders)</string>
+    <string name="label_history_status">%1$s · %2$d riders</string>
+    <string name="label_cost_not_split">Your cost: Cost not split yet</string>
+    <string name="label_your_cost">Your cost: $%1$s · %2$s</string>
+    <string name="label_owed_to_you">Riders owe you $%1$s · %2$d of %3$d paid</string>
+    <string name="status_paid">Paid</string>
+    <string name="status_not_paid">Not paid</string>
+    <string name="label_monthly_summary">Monthly Summary</string>
+    <string name="prompt_month">Month</string>
+    <string name="prompt_year">Year</string>
+    <string name="monthly_no_activity">No activity! Please select another month.</string>
+    <string name="monthly_summary_result">Completed rides: %1$d\nAssigned costs (paid and unpaid): $%2$s\nRides organized: %3$d\nRides joined: %4$d</string>
+    <string name="action_edit_ride">Edit Ride</string>
+    <string name="action_change_status">Change Status</string>
+    <string name="action_cancel_ride">Cancel Ride</string>
+    <string name="action_leave_ride">Leave Ride</string>
+    <string name="action_back">Back</string>
+    <string name="action_yes">Yes</string>
+    <string name="action_no">No</string>
+    <string name="confirm_cancel_ride">Cancel this ride for everyone?</string>
+    <string name="confirm_leave_ride">Leave this ride?</string>
+    <string name="msg_status_updated">Status updated</string>
+    <string name="msg_ride_cancelled">Ride cancelled</string>
+    <string name="msg_left_ride">You left the ride</string>
+    <string name="msg_ride_updated">Ride updated</string>
+    <string name="error_update_ride">Could not update ride. Try again.</string>
+    <string name="edit_ride_title">Edit Ride</string>
+    <string name="edit_ride_subtitle">Only the time and note can be changed after posting</string>
+    <string name="action_save_changes">Save Changes</string>
+    <string name="prompt_join_note">Note to the organizer (optional)</string>
+    <string-array name="history_status_options">
+        <item>All</item>
+        <item>Completed</item>
+        <item>Cancelled</item>
+    </string-array>
+    <string-array name="history_sort_options">
+        <item>Newest first</item>
+        <item>Oldest first</item>
+    </string-array>
+    <string-array name="search_sort_options">
+        <item>Earliest to latest</item>
+        <item>Latest to earliest</item>
+        <item>Proximity</item>
+        <item>Proximity and time</item>
+        <item>Expected cost</item>
+    </string-array>
+    <plurals name="search_result_count">
+        <item quantity="one">%d ride found</item>
+        <item quantity="other">%d rides found</item>
+    </plurals>
+    <string name="prompt_full_name">Full Name</string>
+    <string name="prompt_usc_email">USC Email (e.g., user@usc.edu)</string>
+    <string name="prompt_usc_id">USC ID (e.g., 1234567890)</string>
+    <string name="prompt_grad_year">Expected Graduation Year (e.g., 2026)</string>
+    <string name="prompt_nickname">Nickname (Optional, defaults to Full Name)</string>
     <string name="label_full_name">Full Name: %s</string>
     <string name="hint_usc_email_readonly">USC Email (Non-editable)</string>
     <string name="hint_usc_id_readonly">USC ID (Non-editable)</string>
