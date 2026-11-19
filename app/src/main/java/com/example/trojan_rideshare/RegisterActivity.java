@@ -72,8 +72,8 @@ public class RegisterActivity extends AppCompatActivity {
             hasError = true;
         }
 
-        if (email.isEmpty() || !Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            tilEmail.setError("Please enter a valid email address");
+        if (email.isEmpty() || !Patterns.EMAIL_ADDRESS.matcher(email).matches() || !email.toLowerCase().endsWith("@usc.edu")) {
+            tilEmail.setError("Please enter a valid USC email address ending with @usc.edu");
             hasError = true;
         }
 
