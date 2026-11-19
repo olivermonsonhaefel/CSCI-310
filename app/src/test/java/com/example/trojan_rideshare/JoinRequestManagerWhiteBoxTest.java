@@ -13,7 +13,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 /** Checks for sending and accepting join requests (UCS-2.3.2, UCS-2.3.4). No Firestore needed. */
-public class JoinRequestManagerTest {
+public class JoinRequestManagerWhiteBoxTest {
 
     private static final Location USC = new Location("USC", 34.0224, -118.2851);
     private static final Location LAX = new Location("LAX", 33.9416, -118.4085);
